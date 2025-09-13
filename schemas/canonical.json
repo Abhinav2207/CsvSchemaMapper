@@ -1,0 +1,295 @@
+{
+  "schema_version": "1.0",
+  "description": "Canonical schema for e-commerce order data",
+  "columns": {
+    "order_id": {
+      "display": "Order ID",
+      "type": "string",
+      "validators": ["non_empty", "unique_key"],
+      "description": "Unique order identifier",
+      "example": "ORD-1001",
+      "lemmas": ["order", "id", "identifier", "reference", "number"],
+      "abbreviations": [
+        "ord_id",
+        "orderid",
+        "order_number",
+        "order_no",
+        "ord_num"
+      ]
+    },
+    "order_date": {
+      "display": "Order Date",
+      "type": "date",
+      "validators": ["non_empty", "date_in_range"],
+      "formats": [
+        "YYYY-MM-DD",
+        "MM/DD/YYYY",
+        "DD-MM-YYYY",
+        "YYYY/MM/DD",
+        "DD/MM/YYYY"
+      ],
+      "description": "ISO date of order",
+      "example": "2025-08-09",
+      "lemmas": ["order", "date", "time", "timestamp", "created"],
+      "abbreviations": ["date", "ord_date", "order_dt", "created_date", "dt"]
+    },
+    "customer_id": {
+      "display": "Customer ID",
+      "type": "string",
+      "validators": ["non_empty"],
+      "description": "Internal customer id",
+      "example": "CUST-42",
+      "lemmas": ["customer", "client", "user", "id", "identifier", "reference"],
+      "abbreviations": [
+        "cust_id",
+        "custid",
+        "customer_number",
+        "cust_no",
+        "client_id"
+      ]
+    },
+    "customer_name": {
+      "display": "Customer Name",
+      "type": "string",
+      "validators": ["non_empty"],
+      "description": "Full name",
+      "example": "Aarav Sharma",
+      "lemmas": ["customer", "client", "user", "name", "full", "person"],
+      "abbreviations": [
+        "customer",
+        "cust_name",
+        "client_name",
+        "name",
+        "full_name"
+      ]
+    },
+    "email": {
+      "display": "Email",
+      "type": "string",
+      "validators": [
+        "non_empty",
+        "regex:^[\\w\\.-]+@[\\w\\.-]+\\.[a-zA-Z]{2,}$"
+      ],
+      "description": "Contact email",
+      "example": "aarav@example.com",
+      "lemmas": ["email", "mail", "contact", "address", "electronic"],
+      "abbreviations": ["mail", "e_mail", "email_address", "contact_email"]
+    },
+    "phone": {
+      "display": "Phone",
+      "type": "string",
+      "validators": ["non_empty"],
+      "description": "Contact phone",
+      "example": "+91-9000156794",
+      "lemmas": ["phone", "telephone", "mobile", "contact", "number", "cell"],
+      "abbreviations": [
+        "phone_number",
+        "telephone",
+        "mobile",
+        "contact_phone",
+        "ph"
+      ]
+    },
+    "billing_address": {
+      "display": "Billing Address",
+      "type": "string",
+      "validators": [],
+      "description": "Billing address line",
+      "example": "221B Baker Street",
+      "lemmas": ["billing", "bill", "invoice", "address", "street", "location"],
+      "abbreviations": [
+        "bill_addr",
+        "billing_addr",
+        "bill_address",
+        "invoice_address"
+      ]
+    },
+    "shipping_address": {
+      "display": "Shipping Address",
+      "type": "string",
+      "validators": [],
+      "description": "Shipping address line",
+      "example": "14 MG Road",
+      "lemmas": [
+        "shipping",
+        "delivery",
+        "ship",
+        "address",
+        "street",
+        "location"
+      ],
+      "abbreviations": [
+        "ship_addr",
+        "shipping_addr",
+        "ship_address",
+        "delivery_address"
+      ]
+    },
+    "city": {
+      "display": "City",
+      "type": "string",
+      "validators": ["non_empty"],
+      "description": "City",
+      "example": "Bengaluru",
+      "lemmas": ["city", "town", "municipality", "urban"],
+      "abbreviations": []
+    },
+    "state": {
+      "display": "State",
+      "type": "string",
+      "validators": [],
+      "description": "State/Province",
+      "example": "Karnataka",
+      "lemmas": ["state", "province", "region", "territory"],
+      "abbreviations": []
+    },
+    "postal_code": {
+      "display": "Postal Code",
+      "type": "string",
+      "validators": [],
+      "description": "Zip/Postal",
+      "example": "560095",
+      "lemmas": ["postal", "zip", "code", "pincode", "postcode"],
+      "abbreviations": [
+        "zip",
+        "zipcode",
+        "zip_code",
+        "postcode",
+        "postal",
+        "pincode"
+      ]
+    },
+    "country": {
+      "display": "Country",
+      "type": "string",
+      "validators": ["non_empty"],
+      "description": "Country",
+      "example": "India",
+      "lemmas": ["country", "nation", "territory"],
+      "abbreviations": []
+    },
+    "product_sku": {
+      "display": "Product SKU",
+      "type": "string",
+      "validators": ["non_empty"],
+      "description": "SKU code",
+      "example": "SW-1234",
+      "lemmas": ["product", "sku", "stock", "keeping", "unit", "code", "item"],
+      "abbreviations": ["sku", "product_code", "item_code", "prod_sku"]
+    },
+    "product_name": {
+      "display": "Product Name",
+      "type": "string",
+      "validators": ["non_empty"],
+      "description": "Item name",
+      "example": "Alpha SaaS",
+      "lemmas": ["product", "item", "name", "title", "service"],
+      "abbreviations": ["product", "prod_name", "item_name", "item"]
+    },
+    "category": {
+      "display": "Category",
+      "type": "string",
+      "validators": [],
+      "description": "Category",
+      "example": "Software Subscription",
+      "lemmas": ["category", "class", "type", "group", "classification"],
+      "abbreviations": ["cat", "prod_category", "product_category"]
+    },
+    "subcategory": {
+      "display": "Subcategory",
+      "type": "string",
+      "validators": [],
+      "description": "Subcategory if any",
+      "example": "Enterprise",
+      "lemmas": ["subcategory", "subclass", "subtype", "subgroup"],
+      "abbreviations": [
+        "subcat",
+        "sub_cat",
+        "prod_subcategory",
+        "product_subcategory"
+      ]
+    },
+    "quantity": {
+      "display": "Quantity",
+      "type": "numeric",
+      "validators": ["non_empty"],
+      "description": "Units ordered",
+      "example": "3",
+      "lemmas": ["quantity", "qty", "amount", "count", "units", "number"],
+      "abbreviations": ["qty", "quan", "count", "units"]
+    },
+    "unit_price": {
+      "display": "Unit Price",
+      "type": "numeric",
+      "validators": ["non_empty"],
+      "description": "Price per unit",
+      "example": "4999.99",
+      "lemmas": ["unit", "price", "cost", "rate", "amount", "each"],
+      "abbreviations": ["price", "cost", "rate", "unit_cost", "each"]
+    },
+    "currency": {
+      "display": "Currency",
+      "type": "string",
+      "validators": ["non_empty", "regex:^[A-Z]{3}$"],
+      "description": "Currency code",
+      "example": "INR",
+      "lemmas": ["currency", "money", "denomination", "code"],
+      "abbreviations": ["curr", "currency_code"]
+    },
+    "discount_pct": {
+      "display": "Discount Percentage",
+      "type": "numeric",
+      "validators": [],
+      "description": "Discount fraction (0-1)",
+      "example": "0.1",
+      "lemmas": ["discount", "reduction", "percent", "percentage", "off"],
+      "abbreviations": [
+        "discount",
+        "disc",
+        "discount_percent",
+        "discount_percentage"
+      ]
+    },
+    "tax_pct": {
+      "display": "Tax Percentage",
+      "type": "numeric",
+      "validators": [],
+      "description": "Tax fraction (0-1)",
+      "example": "0.18",
+      "lemmas": ["tax", "vat", "gst", "percent", "percentage", "rate"],
+      "abbreviations": ["tax", "tax_percent", "tax_percentage", "vat", "gst"]
+    },
+    "shipping_fee": {
+      "display": "Shipping Fee",
+      "type": "numeric",
+      "validators": [],
+      "description": "Shipping amount",
+      "example": "199.0",
+      "lemmas": ["shipping", "delivery", "fee", "cost", "charge"],
+      "abbreviations": [
+        "ship_fee",
+        "shipping_cost",
+        "delivery_fee",
+        "shipping_charge"
+      ]
+    },
+    "total_amount": {
+      "display": "Total Amount",
+      "type": "numeric",
+      "validators": ["non_empty"],
+      "description": "Total amount charged",
+      "example": "16999.00",
+      "lemmas": ["total", "amount", "sum", "charged", "final", "grand"],
+      "abbreviations": ["total", "grand_total", "final_amount", "amount_total"]
+    },
+    "tax_id": {
+      "display": "Tax ID",
+      "type": "string",
+      "validators": [],
+      "description": "Tax/GST/VAT identifier",
+      "example": "29ABCDE1234F1Z5",
+      "lemmas": ["tax", "gst", "vat", "id", "identifier", "registration"],
+      "abbreviations": ["taxid", "tax_number", "gst_number", "vat_number"]
+    }
+  }
+}

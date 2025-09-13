@@ -1,0 +1,26 @@
+[project]
+name = "finkraft"
+version = "0.1.0"
+description = "Package for schema mapper & data quality fixer"
+authors = [
+    {name = "abhinav modi",email = "abhinavmodi.official@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "streamlit (>=1.49.1,<2.0.0)",
+    "nltk (>=3.9.1,<4.0.0)",
+    "boto3 (>=1.40.30,<2.0.0)",
+    "numpy (==1.26.4)",
+    "pandas (>=2.3.2,<3.0.0)",
+    "rapidfuzz (>=3.14.1,<4.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+
