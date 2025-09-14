@@ -1,10 +1,11 @@
 import json
+import re
 from typing import Dict, List, Optional
 
 import google.generativeai as genai
 import pandas as pd
-import streamlit as st
 from rapidfuzz import fuzz
+import streamlit as st
 
 from common_utils.constants import CONSTANTS
 from modules.schema_loader import get_schema_loader
@@ -157,40 +158,123 @@ Only return the JSON, no other text."""
         # Get some valid samples from the same column
         valid_samples = df[col_name].dropna().head(5).tolist()
 
-        prompt = f"""You are an expert data cleaner. A data validation process found an error. Your task is to suggest a single, most likely correction for the invalid value.
+        prompt = f"""You are a data cleaning expert. Fix this data validation error.
 
-Error Details:
-- Column: "{col_name}" (Expected Type: {col_def.get('type', 'N/A')})
-- Invalid Value: "{invalid_value}"
-- Error Type: "{error_type}"
-- Validation Rule: "{error.get('message', 'N/A')}"
+ERROR DETAILS:
+Column: {col_name} (Type: {col_def.get('type', 'N/A')})
+Invalid Value: "{invalid_value}"
+Error: {error_type}
+Rule: {error.get('message', 'N/A')}
 
-Context from the dataset:
-- Here are some other valid values from the "{col_name}" column: {valid_samples}
+VALID EXAMPLES: {valid_samples}
 
-Instructions:
-- Analyze the invalid value and the error.
-- Consider the column type and other valid values for context.
-- Provide the most probable corrected value.
-- Respond in JSON format like this: {{"suggestion": "your_suggested_fix"}}
-- Only return the JSON, no other text or explanation. If you cannot determine a fix, respond with {{"suggestion": null}}.
-"""
+TASK: Provide the most likely corrected value.
+
+RESPONSE FORMAT: Return ONLY valid JSON like this:
+{{"suggestion": "corrected_value"}}
+
+If no fix is possible, return:
+{{"suggestion": null}}
+
+IMPORTANT: Return ONLY the JSON object, no explanations or extra text."""
 
         try:
             response = self.gemini_model.generate_content(prompt)
+
+            # Check if response exists and has text
+            if not response or not hasattr(response, "text") or not response.text:
+                print(f"Gemini returned empty response for value '{invalid_value}'")
+                return None
+
             response_text = response.text.strip()
 
             # Increment Gemini calls counter
             if "gemini_calls_count" in st.session_state:
                 st.session_state.gemini_calls_count += 1
 
-            # Parse the JSON response
-            suggestion_json = json.loads(response_text)
-            return suggestion_json.get("suggestion")
+            # Handle empty response
+            if not response_text:
+                print(f"Gemini returned empty text for value '{invalid_value}'")
+                return None
+
+            # Try to extract JSON from response (handle cases where Gemini adds extra text)
+            suggestion = self._extract_suggestion_from_response(
+                response_text, invalid_value
+            )
+            return suggestion
 
         except Exception as e:
             print(f"Gemini data fix suggestion failed for value '{invalid_value}': {e}")
             return None
+
+    def _extract_suggestion_from_response(
+        self, response_text: str, invalid_value: str
+    ) -> Optional[str]:
+        """
+        Extract suggestion from Gemini response with robust JSON parsing.
+
+        Args:
+            response_text: Raw response from Gemini
+            invalid_value: The original invalid value (for error reporting)
+
+        Returns:
+            The suggested fix value or None if parsing fails
+        """
+        try:
+            # First, try direct JSON parsing
+            suggestion_json = json.loads(response_text)
+            return suggestion_json.get("suggestion")
+
+        except json.JSONDecodeError:
+            # If direct parsing fails, try to find JSON within the text
+            try:
+                # Look for JSON-like structure in the response
+
+                # Try to find JSON object pattern
+                json_pattern = r'\{[^}]*"suggestion"[^}]*\}'
+                json_match = re.search(json_pattern, response_text)
+
+                if json_match:
+                    json_str = json_match.group()
+                    suggestion_json = json.loads(json_str)
+                    return suggestion_json.get("suggestion")
+
+                # Try to extract just the suggestion value from various patterns
+                # Pattern 1: "suggestion": "value"
+                suggestion_pattern = r'"suggestion":\s*"([^"]*)"'
+                match = re.search(suggestion_pattern, response_text)
+                if match:
+                    return match.group(1)
+
+                # Pattern 2: suggestion: value (without quotes)
+                suggestion_pattern2 = r'"suggestion":\s*([^,}\s]+)'
+                match2 = re.search(suggestion_pattern2, response_text)
+                if match2:
+                    value = match2.group(1).strip("\"'")
+                    return value if value.lower() != "null" else None
+
+                # If response looks like a direct suggestion without JSON structure
+                # and is different from the original value, use it
+                if (
+                    response_text
+                    and response_text != invalid_value
+                    and len(response_text) < 200  # Reasonable length for a data value
+                    and not any(
+                        char in response_text for char in ["\n", "{", "}", "[", "]"]
+                    )
+                ):  # Doesn't look like structured text
+                    return response_text
+
+                print(
+                    f"Could not extract JSON suggestion from response for '{invalid_value}': {response_text[:100]}..."
+                )
+                return None
+
+            except Exception as e:
+                print(
+                    f"Error extracting suggestion from response for '{invalid_value}': {e}"
+                )
+                return None
 
     def _get_sample_values(
         self, df: pd.DataFrame, column: str, n: int = 3

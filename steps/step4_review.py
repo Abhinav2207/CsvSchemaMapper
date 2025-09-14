@@ -3,7 +3,10 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
+from common_utils.learned_mappings import LearnedMappingsManager
+
 from .step2_schema_mapper import display_mapping_summary
+from .step3_data_quality_fixer import display_quality_summary
 
 
 def review_results():
@@ -28,8 +31,11 @@ def review_results():
     st.info("Here's a preview of your transformed data with canonical column names:")
 
     if "transformed_df" in st.session_state:
+        # Debug: Show dataframe info
+        df = st.session_state.transformed_df
+
         # Show 5 rows by default
-        st.dataframe(st.session_state.transformed_df.head(5), width="stretch")
+        st.dataframe(df.head(5), width="stretch")
 
         # Show basic info about the dataframe
         col1, col2 = st.columns(2)
@@ -64,13 +70,16 @@ def review_results():
     if st.session_state.get("mapping_summary"):
         display_mapping_summary(st.session_state.mapping_summary)
 
-    # --- 4. Data Quality Info ---
+    # --- 4. Data Quality Summary ---
+    st.markdown("---")
+    display_quality_summary()
+
+    # Legacy data quality info (for backward compatibility)
     if st.session_state.get("validation_errors"):
-        st.subheader("⚠️ Data Quality Issues")
-        error_count = len(st.session_state.validation_errors)
-        if error_count > 0:
-            st.warning(
-                f"Found {error_count} data quality issues. Consider reviewing Step 3 for data cleaning."
+        legacy_error_count = len(st.session_state.validation_errors)
+        if legacy_error_count > 0:
+            st.info(
+                f"Note: {legacy_error_count} legacy validation errors were also found."
             )
 
     # --- 5. Download Options ---
@@ -134,7 +143,39 @@ def review_results():
         st.subheader("🤖 AI Usage")
         st.info(f"Total Gemini API calls made during this session: {gemini_calls}")
 
-    # --- 7. Navigation Buttons ---
+    # --- 7. Learned Mappings Summary ---
+    st.subheader("💡 Learning Progress")
+    learned_manager = LearnedMappingsManager()
+    learned_stats = learned_manager.get_stats()
+
+    if learned_stats["total_learned_header_variations"] > 0:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric(
+                "📚 Canonical Fields with Learning",
+                learned_stats["total_canonical_fields_with_learned_mappings"],
+            )
+        with col2:
+            st.metric(
+                "🎯 Total Learned Variations",
+                learned_stats["total_learned_header_variations"],
+            )
+
+        with st.expander("📋 View Learned Mappings", expanded=False):
+            learned_mappings = learned_manager.load_learned_mappings()
+            if learned_mappings:
+                for canonical_field, variations in learned_mappings.items():
+                    st.write(f"**{canonical_field}:**")
+                    for variation in variations:
+                        st.write(f"  • `{variation}`")
+            else:
+                st.write("No learned mappings found.")
+    else:
+        st.info(
+            "🎓 No learned mappings yet. Manual overrides and AI suggestions will be saved for future use!"
+        )
+
+    # --- 9. Navigation Buttons ---
     st.subheader("🚀 Next Steps")
     col1, col2 = st.columns(2)
 

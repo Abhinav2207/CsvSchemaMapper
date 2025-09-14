@@ -24,10 +24,9 @@ class SummaryKey:
 
 
 class CONSTANTS:
-    USE_GEMINI = os.getenv("USE_GEMINI", "False").lower() == "true"
-    GEMINI_API_KEY = os.getenv(
-        "GEMINI_API_KEY", "AIzaSyDxP9FY64eiv3NqB7MXqQvpKAZ9BQ_KWAo"
-    )
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    USE_GEMINI = os.getenv("USE_GEMINI", "True").lower() == "true"
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
     MISSING_DATA_THRESHOLD = float(os.getenv("MISSING_DATA_THRESHOLD", "10.0"))
     AI_CONFIDENCE_THRESHOLD = float(os.getenv("AI_CONFIDENCE_THRESHOLD", "0.7"))
+    COLUMN_UNMATCH_THRESHOLD = int(os.getenv("COLUMN_UNMATCH_THRESHOLD", "5"))

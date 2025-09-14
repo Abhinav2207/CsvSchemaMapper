@@ -7,6 +7,7 @@ from rapidfuzz import fuzz
 
 from common_utils.constants import CONSTANTS, MatchMethod, SummaryKey
 from common_utils.gemini_agent import GeminiAgent
+from common_utils.learned_mappings import LearnedMappingsManager
 from modules.schema_loader import get_schema_loader
 
 
@@ -96,13 +97,31 @@ class SchemaMapper:
         self, normalized_headers: List[str]
     ) -> Dict[str, Tuple[str, float]]:
         """
-        Handle common abbreviations and variations using abbreviations from each column definition.
+        Handle common abbreviations and variations using abbreviations from each column definition
+        and learned mappings from previous user interactions.
         Only maps to canonical columns that haven't been mapped yet.
         """
         abbreviation_matches = {}
+        learned_mappings_manager = LearnedMappingsManager()
 
         for header in normalized_headers:
-            # Check each canonical column's abbreviations
+            # First check learned mappings (higher priority)
+            learned_canonical = (
+                learned_mappings_manager.find_canonical_by_learned_mapping(header)
+            )
+            if (
+                learned_canonical
+                and learned_canonical in self.canonical_columns
+                and learned_canonical not in self.mapped_canonical_columns
+            ):
+                abbreviation_matches[header] = (
+                    learned_canonical,
+                    0.95,
+                )  # High confidence for learned mappings
+                self.mapped_canonical_columns.add(learned_canonical)
+                continue  # Found learned mapping, skip other checks
+
+            # Then check each canonical column's predefined abbreviations
             for canonical_name, column_def in self.canonical_columns.items():
                 # Skip if this canonical column is already mapped
                 if canonical_name in self.mapped_canonical_columns:
