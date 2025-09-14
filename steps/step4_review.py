@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from .step2_schema_mapper import display_mapping_summary
+from common_utils.learned_mappings import LearnedMappingsManager
 
 
 def review_results():
@@ -134,7 +135,39 @@ def review_results():
         st.subheader("🤖 AI Usage")
         st.info(f"Total Gemini API calls made during this session: {gemini_calls}")
 
-    # --- 7. Navigation Buttons ---
+    # --- 7. Learned Mappings Summary ---
+    st.subheader("💡 Learning Progress")
+    learned_manager = LearnedMappingsManager()
+    learned_stats = learned_manager.get_stats()
+
+    if learned_stats["total_learned_header_variations"] > 0:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric(
+                "📚 Canonical Fields with Learning",
+                learned_stats["total_canonical_fields_with_learned_mappings"],
+            )
+        with col2:
+            st.metric(
+                "🎯 Total Learned Variations",
+                learned_stats["total_learned_header_variations"],
+            )
+
+        with st.expander("📋 View Learned Mappings", expanded=False):
+            learned_mappings = learned_manager.load_learned_mappings()
+            if learned_mappings:
+                for canonical_field, variations in learned_mappings.items():
+                    st.write(f"**{canonical_field}:**")
+                    for variation in variations:
+                        st.write(f"  • `{variation}`")
+            else:
+                st.write("No learned mappings found.")
+    else:
+        st.info(
+            "🎓 No learned mappings yet. Manual overrides and AI suggestions will be saved for future use!"
+        )
+
+    # --- 9. Navigation Buttons ---
     st.subheader("🚀 Next Steps")
     col1, col2 = st.columns(2)
 
