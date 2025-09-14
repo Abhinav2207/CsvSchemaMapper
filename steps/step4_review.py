@@ -24,7 +24,7 @@ def review_results():
 
 #     successful_mappings = [r for r in results if r["suggested_canonical"]]
 #     failed_mappings = [r for r in results if not r["suggested_canonical"]]
-#     ai_mappings = [r for r in results if r.get("bedrock_suggested")]
+#     ai_mappings = [r for r in results if r.get("gemini_suggested")]
 
 #     col1, col2, col3 = st.columns(3)
 #     with col1:
@@ -120,7 +120,7 @@ def review_results():
 #         "total_headers": len(results),
 #         "successful_mappings": len(successful_mappings),
 #         "failed_mappings": len(failed_mappings),
-#         "ai_calls_made": st.session_state.bedrock_calls_count,
+#         "ai_calls_made": st.session_state.gemini_calls_count,
 #         "mapping_details": results,
 #     }
 
@@ -179,7 +179,7 @@ def review_results():
 #             st.session_state.step = 1
 #             st.session_state.uploaded_df = None
 #             st.session_state.mapping_results = []
-#             st.session_state.bedrock_calls_count = 0
+#             st.session_state.gemini_calls_count = 0
 #             st.session_state.transformed_df = None
 #             st.session_state.applied_mappings = {}
 #             st.session_state.original_filename = ""

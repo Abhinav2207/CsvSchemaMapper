@@ -1,6 +1,6 @@
 import streamlit as st
 
-from common_utils.constants import SummaryKey
+from common_utils.constants import MatchMethod, SummaryKey
 from common_utils.schema_mapper import SchemaMapper
 from modules.schema_loader import get_schema_loader
 
@@ -13,7 +13,8 @@ def display_mapping_summary(summary):
         ("🎯 Exact Matches", SummaryKey.EXACT_MATCHES),
         ("📚 Abbreviation Matches", SummaryKey.ABBREVIATION_MATCHES),
         ("🔍 Fuzzy Matches", SummaryKey.FUZZY_MATCHES),
-        ("🤖 AI Matches", SummaryKey.BEDROCK_MATCHES),
+        ("🤖 AI Matches", SummaryKey.GEMINI_MATCHES),
+        ("✋ Manual Matches", SummaryKey.MANUAL_MATCHES),
         ("❌ No Matches", SummaryKey.NO_MATCHES),
     ]
 
@@ -34,23 +35,64 @@ def schema_mapper():
         st.error("❌ No data found. Please go back to Step 1 and upload a file.")
         return
 
-    # --- 1. Run Mapping Analysis ---
-    if "mapping_results" not in st.session_state:
+    # --- 1. Run Mapping Analysis (only once) ---
+    if (
+        "mapping_results" not in st.session_state
+        or not st.session_state.mapping_results
+    ):
         st.session_state.mapping_results = []
 
-    with st.spinner("Analyzing headers and generating suggestions..."):
-        mapper = SchemaMapper()
-        results = mapper.map_headers(st.session_state.uploaded_df)
-        summary = mapper.get_mapping_summary(results)
-        st.session_state.mapping_results = results
-        st.session_state.mapping_summary = summary
+        with st.spinner("Analyzing headers and generating suggestions..."):
+            mapper = SchemaMapper()
+            results = mapper.map_headers(st.session_state.uploaded_df)
+            summary = mapper.get_mapping_summary(results)
+            st.session_state.mapping_results = results
+            st.session_state.mapping_summary = summary
 
     if not st.session_state.mapping_results:
         st.info("Click the button above to start the schema mapping analysis.")
         return
 
+    # Helper function to update mapping results with manual overrides
+    def update_mapping_results_with_overrides():
+        updated_results = []
+        for i, result in enumerate(st.session_state.mapping_results):
+            updated_result = result.copy()
+            original_suggestion = result.get("suggested_canonical")
+            current_selection = st.session_state.get(f"select_{i}")
+
+            # If user changed the selection, mark as manual match
+            if (
+                current_selection
+                and current_selection != original_suggestion
+                and current_selection != "-- DO NOT MAP --"
+            ):
+                updated_result["mapping_method"] = MatchMethod.MANUAL
+                updated_result["suggested_canonical"] = current_selection
+                updated_result["confidence"] = (
+                    1.0  # Manual selections have 100% confidence
+                )
+            elif current_selection == "-- DO NOT MAP --":
+                updated_result["mapping_method"] = MatchMethod.NO_MATCH
+                updated_result["suggested_canonical"] = None
+                updated_result["confidence"] = 0.0
+
+            updated_results.append(updated_result)
+        return updated_results
+
+    # Update results with current overrides and recalculate summary
+    current_mapping_results = update_mapping_results_with_overrides()
+    mapper = SchemaMapper()
+    current_summary = mapper.get_mapping_summary(current_mapping_results)
+
     # --- 2. Display Results and Interactive Override ---
-    display_mapping_summary(st.session_state.mapping_summary)
+    display_mapping_summary(current_summary)
+
+    # Show Gemini calls count
+    gemini_calls = st.session_state.get("gemini_calls_count", 0)
+    if gemini_calls > 0:
+        st.info(f"🤖 Gemini API calls made: {gemini_calls}")
+
     st.markdown("---")
     st.subheader("Review and Confirm Mappings")
     st.markdown(
@@ -95,12 +137,22 @@ def schema_mapper():
             )
             user_overrides[original_header] = user_choice
         with c3:
-            st.write(f"{result['confidence']:.2f}")
+            # Get the current confidence (could be updated for manual overrides)
+            current_confidence = current_mapping_results[i]["confidence"]
+            st.write(f"{current_confidence:.2f}")
         with c4:
-            mapping_method = result["mapping_method"]
-            if mapping_method == "No Match":
+            # Get the current method (could be overridden)
+            current_result = current_mapping_results[i]
+            mapping_method = current_result["mapping_method"]
+
+            if mapping_method == MatchMethod.NO_MATCH:
                 st.markdown(
                     f"<span style='background-color: #ffebee; color: #d32f2f; padding: 4px 8px; border-radius: 4px; font-weight: bold;'>⚠️ {mapping_method}</span>",
+                    unsafe_allow_html=True,
+                )
+            elif mapping_method == MatchMethod.MANUAL:
+                st.markdown(
+                    f"<span style='background-color: #e8f5e8; color: #2e7d32; padding: 4px 8px; border-radius: 4px; font-weight: bold;'>✋ {mapping_method}</span>",
                     unsafe_allow_html=True,
                 )
             else:
@@ -126,6 +178,10 @@ def schema_mapper():
 
         if not mappings_applied:
             if st.button("✅ Apply Mappings", type="primary"):
+                # Update mapping results with final overrides
+                st.session_state.mapping_results = current_mapping_results
+                st.session_state.mapping_summary = current_summary
+
                 # Only rename columns that have actual mappings (not "-- DO NOT MAP --")
                 rename_map = {
                     original: new_name

@@ -12,8 +12,8 @@ def initialize_session_state():
         st.session_state.original_filename = ""
     if "mapping_results" not in st.session_state:
         st.session_state.mapping_results = []
-    if "bedrock_calls_count" not in st.session_state:
-        st.session_state.bedrock_calls_count = 0
+    if "gemini_calls_count" not in st.session_state:
+        st.session_state.gemini_calls_count = 0
     if "transformed_df" not in st.session_state:
         st.session_state.transformed_df = None
     if "applied_mappings" not in st.session_state:

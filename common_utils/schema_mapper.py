@@ -5,22 +5,22 @@ from typing import Dict, List, Tuple
 import pandas as pd
 from rapidfuzz import fuzz
 
-from common_utils.bedrock_agent import BedrockAgent
 from common_utils.constants import CONSTANTS, MatchMethod, SummaryKey
+from common_utils.gemini_agent import GeminiAgent
 from modules.schema_loader import get_schema_loader
 
 
 class SchemaMapper:
-    def __init__(self, use_bedrock: bool = CONSTANTS.USE_BEDROCK):
+    def __init__(self, use_gemini: bool = CONSTANTS.USE_GEMINI):
         self.schema_loader = get_schema_loader()
         self.canonical_columns = self.schema_loader.get_canonical_columns()
         self.mapped_canonical_columns = (
             set()
         )  # Track which canonical columns are already mapped
 
-        # Initialize Bedrock agent
-        self.bedrock_agent = BedrockAgent(use_bedrock=use_bedrock)
-        self.use_bedrock = self.bedrock_agent.use_bedrock
+        # Initialize Gemini agent
+        self.gemini_agent = GeminiAgent(use_gemini=use_gemini)
+        self.use_gemini = self.gemini_agent.use_gemini
 
     def normalize_header(self, header: str) -> str:
         """
@@ -155,20 +155,20 @@ class SchemaMapper:
 
         return fuzzy_matches
 
-    def get_bedrock_matches(
+    def get_gemini_matches(
         self,
         normalized_headers: List[str],
         uploaded_df: pd.DataFrame,
         already_mapped_headers: set,
     ) -> Dict[str, Tuple[str, float]]:
         """
-        Use AWS Bedrock LLM to match remaining headers to canonical columns.
+        Use Google Gemini LLM to match remaining headers to canonical columns.
         Only processes headers that haven't been mapped yet.
         """
-        if not self.use_bedrock:
+        if not self.use_gemini:
             return {}
 
-        bedrock_matches = {}
+        gemini_matches = {}
 
         # Get remaining unmapped canonical columns
         available_canonical = [
@@ -194,8 +194,8 @@ class SchemaMapper:
         if not unmapped_headers:
             return {}
 
-        # Query Bedrock for batch mapping using BedrockAgent
-        suggested_mappings = self.bedrock_agent.map_headers_batch(
+        # Query Gemini for batch mapping using GeminiAgent
+        suggested_mappings = self.gemini_agent.map_headers_batch(
             unmapped_headers, available_canonical, uploaded_df, header_map
         )
 
@@ -203,10 +203,10 @@ class SchemaMapper:
             if canonical_col and canonical_col not in self.mapped_canonical_columns:
                 # Confidence range 0.7-0.85 for AI suggestions
                 confidence = 0.8
-                bedrock_matches[header] = (canonical_col, confidence)
+                gemini_matches[header] = (canonical_col, confidence)
                 self.mapped_canonical_columns.add(canonical_col)
 
-        return bedrock_matches
+        return gemini_matches
 
     def map_headers(self, uploaded_df: pd.DataFrame) -> List[Dict]:
         """
@@ -234,13 +234,13 @@ class SchemaMapper:
         # Step 3: Find fuzzy matches for remaining headers (confidence 0.5-0.8)
         fuzzy_matches = self.get_fuzzy_matches(normalized_headers)
 
-        # Step 4: Use Bedrock LLM for remaining headers (confidence 0.8)
+        # Step 4: Use Gemini LLM for remaining headers (confidence 0.8)
         already_mapped_headers = (
             set(exact_matches.keys())
             | set(abbreviation_matches.keys())
             | set(fuzzy_matches.keys())
         )
-        bedrock_matches = self.get_bedrock_matches(
+        gemini_matches = self.get_gemini_matches(
             normalized_headers, uploaded_df, already_mapped_headers
         )
 
@@ -249,7 +249,7 @@ class SchemaMapper:
             (exact_matches, MatchMethod.EXACT),
             (abbreviation_matches, MatchMethod.ABBREVIATION),
             (fuzzy_matches, MatchMethod.FUZZY),
-            (bedrock_matches, MatchMethod.BEDROCK),
+            (gemini_matches, MatchMethod.GEMINI),
         ]
 
         # Process all headers and create results
@@ -309,7 +309,8 @@ class SchemaMapper:
             SummaryKey.EXACT_MATCHES: counts.get(MatchMethod.EXACT, 0),
             SummaryKey.ABBREVIATION_MATCHES: counts.get(MatchMethod.ABBREVIATION, 0),
             SummaryKey.FUZZY_MATCHES: counts.get(MatchMethod.FUZZY, 0),
-            SummaryKey.BEDROCK_MATCHES: counts.get(MatchMethod.BEDROCK, 0),
+            SummaryKey.GEMINI_MATCHES: counts.get(MatchMethod.GEMINI, 0),
+            SummaryKey.MANUAL_MATCHES: counts.get(MatchMethod.MANUAL, 0),
             SummaryKey.NO_MATCHES: counts.get(MatchMethod.NO_MATCH, 0),
         }
 
@@ -318,7 +319,8 @@ class SchemaMapper:
             summary[SummaryKey.EXACT_MATCHES]
             + summary[SummaryKey.ABBREVIATION_MATCHES]
             + summary[SummaryKey.FUZZY_MATCHES]
-            + summary[SummaryKey.BEDROCK_MATCHES]
+            + summary[SummaryKey.GEMINI_MATCHES]
+            + summary[SummaryKey.MANUAL_MATCHES]
         )
 
         summary["mapped_columns"] = mapped_columns
