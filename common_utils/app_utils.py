@@ -3,6 +3,10 @@ import streamlit as st
 
 def initialize_session_state():
     """Initialize session state variables."""
+    # This is the line that was missing. It creates the step counter.
+    if "step" not in st.session_state:
+        st.session_state.step = 1
+
     if "uploaded_df" not in st.session_state:
         st.session_state.uploaded_df = None
     if "original_filename" not in st.session_state:
@@ -22,4 +26,16 @@ def reset_button_state(button_key: str):
         st.session_state.mapping_results = []
         st.session_state.transformed_df = None
         st.session_state.applied_mappings = {}
+        # We also reset the step back to 1 when starting over
+        st.session_state.step = 1
         st.rerun()
+# ```
+
+# ### **What I Changed**
+
+# I added a single block of code to the top of the `initialize_session_state` function:
+
+# ```python
+if "step" not in st.session_state:
+    st.session_state.step = 1
+

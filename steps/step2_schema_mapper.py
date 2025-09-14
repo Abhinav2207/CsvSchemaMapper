@@ -1,192 +1,138 @@
 import pandas as pd
 import streamlit as st
 
-from common_utils.constants import CONSTANTS, MatchMethod, SummaryKey
+from common_utils.constants import MatchMethod, SummaryKey
 from common_utils.schema_mapper import SchemaMapper
 from modules.schema_loader import get_schema_loader
 
 
-def validate_column_count(
-    uploaded_df: pd.DataFrame, threshold: int = CONSTANTS.COLUMN_DELTA_THRESHOLD
-) -> bool:
-    """
-    Validate column count between uploaded CSV and canonical schema.
-
-    Args:
-        uploaded_df: The uploaded DataFrame
-        threshold: Maximum allowed difference in column count (default: 2)
-
-    Returns:
-        dict: Validation results with status, message, and metrics
-    """
-    # Get uploaded CSV column count
-    uploaded_columns = len(uploaded_df.columns)
-
-    # Get canonical schema column count
-    schema_loader = get_schema_loader()
-    canonical_columns = schema_loader.get_canonical_columns()
-    canonical_column_count = len(canonical_columns)
-
-    # Get column names for comparison
-    uploaded_column_names = list(uploaded_df.columns)
-    canonical_column_names = list(canonical_columns.keys())
-
-    # Calculate delta
-    delta = abs(uploaded_columns - canonical_column_count)
-
-    if delta > threshold:
-        root_message = f"⚠️ Column count mismatch detected! Your CSV has {uploaded_columns} columns, but canonical schema expects {canonical_column_count}."
-        if uploaded_columns > canonical_column_count:
-            st.warning(f"{root_message} You have {delta} extra columns.")
-        else:
-            st.warning(f"{root_message} You're missing {delta} columns.")
-
-        with st.expander("🔍 View Detailed Column Comparison"):
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown("**📁 Your CSV Columns:**")
-                for i, col in enumerate(uploaded_column_names, 1):
-                    st.write(f"{i}. {col}")
-
-            with col2:
-                st.markdown("**🎯 Expected Canonical Columns:**")
-                for i, col in enumerate(canonical_column_names, 1):
-                    st.write(f"{i}. {col}")
-
-        return False
-    return True
-
-
-def display_mapping_results(summary, results=None):
-    # Prefer passed results, fallback to session state
-    results = results or st.session_state.get("mapping_results", [])
-
-    if not results:
-        return
-
+def display_mapping_summary(summary):
+    """Displays the summary metrics of the mapping results."""
     st.subheader("Schema Mapping Summary")
 
-    # Define summary metrics config
     metrics = [
-        ("🎯 Exact Matches", SummaryKey.EXACT_MATCHES, False),
-        ("📚 Abbreviation Matches", SummaryKey.ABBREVIATION_MATCHES, False),
-        ("🔍 Fuzzy Matches", SummaryKey.FUZZY_MATCHES, False),
-        ("🤖 AI Matches", SummaryKey.BEDROCK_MATCHES, False),
-        ("❌ No Matches", SummaryKey.NO_MATCHES, False),
-        ("📈 Success Rate", "mapping_percentage", True),
+        ("🎯 Exact Matches", SummaryKey.EXACT_MATCHES),
+        ("📚 Abbreviation Matches", SummaryKey.ABBREVIATION_MATCHES),
+        ("🔍 Fuzzy Matches", SummaryKey.FUZZY_MATCHES),
+        ("🤖 AI Matches", SummaryKey.BEDROCK_MATCHES),
+        ("❌ No Matches", SummaryKey.NO_MATCHES),
     ]
 
     cols = st.columns(len(metrics))
-    for col, (label, key, is_percent) in zip(cols, metrics):
-        value = f"{summary[key]:.1f}%" if is_percent else summary[key]
-        col.metric(label, value)
+    for col, (label, key) in zip(cols, metrics):
+        col.metric(label, summary.get(key, 0))
 
-    # Detailed results
-    # st.subheader("🔍 Detailed Mapping Results")
-
-    # Status mapping dictionary
-    status_map = {
-        MatchMethod.EXACT: "🎯",
-        MatchMethod.ABBREVIATION: "📚",
-        MatchMethod.FUZZY: "🔍",
-        MatchMethod.BEDROCK: "🤖",
-        MatchMethod.NO_MATCH: "❌",
-    }
-
-    schema_loader = get_schema_loader()
-
-    with st.expander("🔍 Detailed Mapping Results"):
-        for result in results:
-            method = result.get("mapping_method", "No Match")
-            confidence = result.get("confidence", 0.0)
-            icon = status_map.get(method, "❌")
-            suggested = result.get("suggested_canonical")
-
-            with st.expander(
-                f"{icon} **{result['original_header']}** → **{suggested or 'No Match'}** "
-                f"(Confidence: {confidence:.1f})"
-            ):
-                col1, col2 = st.columns(2)
-
-                # Left: Header details + samples
-                with col1:
-                    st.markdown("**📝 Header Analysis**")
-                    st.write(f"• **Original:** {result['original_header']}")
-                    st.write(
-                        f"• **Normalized:** {result.get('normalized_header', 'N/A')}"
-                    )
-                    st.write(f"• **Method:** {method}")
-
-                    st.markdown("**📋 Sample Values**")
-                    for val in result.get("sample_values", [])[:3]:
-                        st.write(f"• {val}")
-
-                # Right: Canonical schema info (if available)
-                with col2:
-                    if suggested:
-                        col_def = schema_loader.get_column_definition(suggested)
-                        if col_def:
-                            st.markdown("**🎯 Canonical Field Info**")
-                            st.write(f"• **Type:** {col_def.get('type', 'N/A')}")
-                            st.write(
-                                f"• **Description:** {col_def.get('description', 'N/A')}"
-                            )
-                            st.write(f"• **Example:** {col_def.get('example', 'N/A')}")
-
-                            if col_def.get("validators"):
-                                st.write(
-                                    f"• **Validators:** {', '.join(col_def['validators'])}"
-                                )
-                    else:
-                        st.warning("⚠️ No canonical field match found")
-                        st.markdown("**Possible reasons:**")
-                        st.write(
-                            "• Header doesn't match any known field or abbreviation"
-                        )
-                        st.write("• May need manual review or additional mapping rules")
-                        st.write("• Could be handled by future advanced matching")
+    success_rate = summary.get("mapping_percentage", 0)
+    st.progress(int(success_rate), text=f"Success Rate: {success_rate:.1f}%")
 
 
 def schema_mapper():
-    """Step 2: Intelligent header mapping with exact match priority, then lemmatization and AI fallback."""
-    if st.session_state.uploaded_df is None:
-        st.error("❌ No data found. Please go back to Step 1.")
+    """
+    Step 2: Display mapping suggestions and allow user to review and override.
+    """
+    st.header("Step 2: Map to Canonical Schema")
+
+    if "uploaded_df" not in st.session_state or st.session_state.uploaded_df is None:
+        st.error("❌ No data found. Please go back to Step 1 and upload a file.")
         return
 
-    # Column Count Validation (at the very beginning)
-    validation_success = validate_column_count(st.session_state.uploaded_df)
-    if not validation_success:
+    # --- 1. Run Mapping Analysis ---
+    if "mapping_results" not in st.session_state:
+        st.session_state.mapping_results = []
+
+    if st.button("🚀 Run Mapping Analysis", type="primary"):
+        with st.spinner("Analyzing headers and generating suggestions..."):
+            mapper = SchemaMapper()
+            results = mapper.map_headers(st.session_state.uploaded_df)
+            summary = mapper.get_mapping_summary(results)
+            st.session_state.mapping_results = results
+            st.session_state.mapping_summary = summary
+
+    if not st.session_state.mapping_results:
+        st.info("Click the button above to start the schema mapping analysis.")
         return
 
-    # Run Mapping Analysis automatically
-    try:
-        # Initialize basic header mapper
-        mapper = SchemaMapper()
+    # --- 2. Display Results and Interactive Override ---
+    display_mapping_summary(st.session_state.mapping_summary)
+    st.markdown("---")
+    st.subheader("Review and Confirm Mappings")
+    st.markdown(
+        "Review the suggestions below. You can override any mapping using the dropdowns."
+    )
 
-        # Run mapping analysis
-        mapping_results = mapper.map_headers(st.session_state.uploaded_df)
-        mapping_summary = mapper.get_mapping_summary(mapping_results)
+    schema_loader = get_schema_loader()
+    canonical_columns = list(schema_loader.get_canonical_columns().keys())
+    mapping_options = ["-- DO NOT MAP --"] + canonical_columns
 
-        # Store results
-        st.session_state.mapping_results = mapping_results
-        st.session_state.bedrock_calls_count = 0
+    user_overrides = {}
 
-    except Exception as e:
-        st.error(f"❌ Mapping analysis failed: {str(e)}")
-        return
+    # --- Interactive Table Header ---
+    col1, col2, col3, col4 = st.columns([2, 3, 1, 2])
+    col1.markdown("**Your CSV Header**")
+    col2.markdown("**Your Choice (Override if needed)**")
+    col3.markdown("**Confidence**")
+    col4.markdown("**Method**")
 
-    # Display mapping results
-    display_mapping_results(mapping_summary, mapping_results)
+    # --- Interactive Table Rows ---
+    for i, result in enumerate(st.session_state.mapping_results):
+        original_header = result["original_header"]
+        suggested = result["suggested_canonical"]
 
-    for mapping_result in mapping_results:
-        if mapping_result["suggested_canonical"]:
-            st.session_state.transformed_df = st.session_state.transformed_df.rename(
-                columns={
-                    mapping_result["original_header"]: mapping_result[
-                        "suggested_canonical"
-                    ]
-                }
+        try:
+            default_index = mapping_options.index(suggested) if suggested else 0
+        except ValueError:
+            default_index = 0
+
+        c1, c2, c3, c4 = st.columns([2, 3, 1, 2])
+        with c1:
+            st.write(original_header)
+            with st.expander("Show samples"):
+                st.json(result["sample_values"])
+        with c2:
+            user_choice = st.selectbox(
+                f"map_{original_header}",
+                options=mapping_options,
+                index=default_index,
+                label_visibility="collapsed",
+                key=f"select_{i}"
             )
+            user_overrides[original_header] = user_choice
+        with c3:
+            st.write(f"{result['confidence']:.2f}")
+        with c4:
+            st.write(result["mapping_method"])
 
-    st.dataframe(st.session_state.transformed_df.head(5), width="stretch")
+    st.markdown("---")
+
+    # --- 3. Navigation Buttons ---
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("⬅️ Back to Upload"):
+            st.session_state.step = 1
+            # Clear state for this step before going back
+            st.session_state.mapping_results = []
+            st.session_state.pop('mapping_summary', None)
+            st.rerun()
+
+    with col2:
+        if st.button("➡️ Apply Mappings & Proceed to Cleaning", type="primary"):
+            rename_map = {
+                original: new_name
+                for original, new_name in user_overrides.items()
+                if new_name != "-- DO NOT MAP --"
+            }
+
+            df = st.session_state.uploaded_df.copy()
+            transformed_df = df.rename(columns=rename_map)
+
+            cols_to_drop = [
+                header for header, choice in user_overrides.items()
+                if choice == "-- DO NOT MAP --"
+            ]
+            transformed_df.drop(columns=cols_to_drop, inplace=True, errors='ignore')
+
+            st.session_state.transformed_df = transformed_df
+            st.session_state.applied_mappings = rename_map
+            st.session_state.step = 3
+            st.rerun()
+

@@ -1,9 +1,3 @@
-"""
-Simple Schema Mapper - Streamlit Application
-
-A streamlined tool for CSV header mapping using lemmatization and minimal AI calls.
-"""
-
 import streamlit as st
 
 from common_utils.app_utils import initialize_session_state
@@ -21,26 +15,53 @@ def main():
 
     initialize_session_state()
 
-    # Header
-    st.title("📊 Schema Mapper &amp; Data Quality Fixer")
-    st.markdown(
-        "Automatically map, clean, and validate messy partner CSVs into a single canonical format—reducing manual effort and surfacing only the issues that need attention."
-    )
+    # --- Sidebar for Developer Tools ---
+    with st.sidebar:
+        st.header("Developer Tools")
+        debug_mode = st.checkbox("Show Session State", value=False)
+        if debug_mode:
+            with st.expander("🔬 Current Session State", expanded=False):
+                st.write(st.session_state)
 
-    st.markdown("---")
+    # --- Main Page Container ---
+    # Placing all main content inside this container solves the overlap issue.
+    main_container = st.container()
 
-    uploaded_file = st.file_uploader(
-        "Choose a CSV file", type=["csv"], help="Upload a CSV file to analyze"
-    )
+    with main_container:
+        # --- Main Header ---
+        st.title("📊 Schema Mapper & Data Quality Fixer")
+        st.markdown(
+            "Automatically map, clean, and validate messy partner CSVs into a single canonical format."
+        )
+        st.markdown("---")
 
-    if uploaded_file is not None:
-        step1_upload_csv(uploaded_file)
-        step2_schema_mapper()
+        # --- Visual Progress Bar / Stepper ---
+        steps = ["Upload", "Map Schema", "Clean & Validate", "Review & Download"]
+        current_step_index = st.session_state.step - 1
 
-        # TODO: Uncomment these when we have the data quality fixer and review results steps
-        # step3_data_quality_fixer()
-        # step4_review_results()
+        cols = st.columns(len(steps))
+        for i, col in enumerate(cols):
+            with col:
+                if i < current_step_index:
+                    st.success(f"✓ {steps[i]}", icon="✅")
+                elif i == current_step_index:
+                    st.info(f"➡️ {steps[i]}", icon="⚙️")
+                else:
+                    st.write(f"⚪ {steps[i]}")
+
+        st.markdown("---")
+
+        # --- Page Router ---
+        if st.session_state.step == 1:
+            step1_upload_csv()
+        elif st.session_state.step == 2:
+            step2_schema_mapper()
+        elif st.session_state.step == 3:
+            step3_data_quality_fixer()
+        elif st.session_state.step == 4:
+            step4_review_results()
 
 
 if __name__ == "__main__":
     main()
+

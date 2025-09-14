@@ -5,6 +5,7 @@ import pandas as pd
 from rapidfuzz import fuzz
 
 from common_utils.constants import CONSTANTS
+from modules.schema_loader import get_schema_loader
 
 
 class BedrockAgent:
@@ -134,6 +135,77 @@ Only return the JSON, no other text."""
                             break
         return mappings
 
+    def suggest_data_fix(
+        self, error: Dict, df: pd.DataFrame
+    ) -> Optional[str]:
+        """
+        Query Bedrock to suggest a fix for a single data validation error.
+
+        Args:
+            error: The error dictionary from the DataValidator.
+            df: The full DataFrame for context.
+
+        Returns:
+            A string suggestion for the fix, or None if it fails.
+        """
+        if not self.use_bedrock or not self.bedrock_client:
+            return None
+
+        col_name = error["column"]
+        invalid_value = error["value"]
+        error_type = error["error_type"]
+
+        # Get column definition for context
+        schema_loader = get_schema_loader()
+        col_def = schema_loader.get_column_definition(col_name)
+        if not col_def:
+            return None
+
+        # Get some valid samples from the same column
+        valid_samples = df[col_name].dropna().head(5).tolist()
+
+        prompt = f"""You are an expert data cleaner. A data validation process found an error. Your task is to suggest a single, most likely correction for the invalid value.
+
+Error Details:
+- Column: "{col_name}" (Expected Type: {col_def.get('type', 'N/A')})
+- Invalid Value: "{invalid_value}"
+- Error Type: "{error_type}"
+- Validation Rule: "{error.get('message', 'N/A')}"
+
+Context from the dataset:
+- Here are some other valid values from the "{col_name}" column: {valid_samples}
+
+Instructions:
+- Analyze the invalid value and the error.
+- Consider the column type and other valid values for context.
+- Provide the most probable corrected value.
+- Respond in JSON format like this: {{"suggestion": "your_suggested_fix"}}
+- Only return the JSON, no other text or explanation. If you cannot determine a fix, respond with {{"suggestion": null}}.
+"""
+
+        try:
+            request_body = {
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 100,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+
+            response = self.bedrock_client.invoke_model(
+                modelId=CONSTANTS.BEDROCK_MODEL,
+                body=json.dumps(request_body),
+            )
+
+            response_body = json.loads(response["body"].read())
+            response_text = response_body["content"][0]["text"].strip()
+
+            # Parse the JSON response
+            suggestion_json = json.loads(response_text)
+            return suggestion_json.get("suggestion")
+
+        except Exception as e:
+            print(f"Bedrock data fix suggestion failed for value '{invalid_value}': {e}")
+            return None
+
     def _get_sample_values(
         self, df: pd.DataFrame, column: str, n: int = 3
     ) -> List[str]:
@@ -146,3 +218,4 @@ Only return the JSON, no other text."""
             sample_values.append(str(value))
 
         return sample_values
+

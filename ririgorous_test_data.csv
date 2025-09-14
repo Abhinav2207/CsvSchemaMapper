@@ -1,0 +1,5 @@
+OrderID,orderDate,Buyer ID,customer name,emial,Contact-Phone,billing.address,city,postcode,Item Title,quantty,rate,curr,internal_notes,tax-id
+ORD-9001,2025-09-14,CUST-A1,Alice Smith,alice@test.com,+1-555-0101,"123 Oak St",New York,10001,"Super Widget",abc,99.99,USD,"First time customer","GST-ABC-123"
+ORD-9002,15/09/2025,CUST-B2,Bob Johnson,bob@test.org,+1-555-0102,"456 Pine Ave",Los Angeles,90001,Mega Frame,2,149.50,CAD,"Repeat buyer, VIP","VAT-XYZ-456"
+ORD-9003,2025-09-16,CUST-C3,Charlie Brown,chariie@invalid,+1-555-0103,"789 Maple Dr",Chicago,60601,Standard Gear,3,25.00,EUR,"",
+ORD-9004,"Sep 17, 2025",CUST-D4,Diana Prince,diana@test.com,+1-555-0104,"101 Palm Blvd",Miami,33101,Basic Unit,1,10.00,JPY,"Handle with care","TAXID-112233"
