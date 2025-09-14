@@ -8,7 +8,6 @@
       "validators": ["non_empty", "unique_key"],
       "description": "Unique order identifier",
       "example": "ORD-1001",
-      "lemmas": ["order", "id", "identifier", "reference", "number"],
       "abbreviations": [
         "ord_id",
         "orderid",
@@ -30,7 +29,6 @@
       ],
       "description": "ISO date of order",
       "example": "2025-08-09",
-      "lemmas": ["order", "date", "time", "timestamp", "created"],
       "abbreviations": ["date", "ord_date", "order_dt", "created_date", "dt"]
     },
     "customer_id": {
@@ -39,7 +37,6 @@
       "validators": ["non_empty"],
       "description": "Internal customer id",
       "example": "CUST-42",
-      "lemmas": ["customer", "client", "user", "id", "identifier", "reference"],
       "abbreviations": [
         "cust_id",
         "custid",
@@ -54,7 +51,6 @@
       "validators": ["non_empty"],
       "description": "Full name",
       "example": "Aarav Sharma",
-      "lemmas": ["customer", "client", "user", "name", "full", "person"],
       "abbreviations": [
         "customer",
         "cust_name",
@@ -72,7 +68,6 @@
       ],
       "description": "Contact email",
       "example": "aarav@example.com",
-      "lemmas": ["email", "mail", "contact", "address", "electronic"],
       "abbreviations": ["mail", "e_mail", "email_address", "contact_email"]
     },
     "phone": {
@@ -81,7 +76,6 @@
       "validators": ["non_empty"],
       "description": "Contact phone",
       "example": "+91-9000156794",
-      "lemmas": ["phone", "telephone", "mobile", "contact", "number", "cell"],
       "abbreviations": [
         "phone_number",
         "telephone",
@@ -96,7 +90,6 @@
       "validators": [],
       "description": "Billing address line",
       "example": "221B Baker Street",
-      "lemmas": ["billing", "bill", "invoice", "address", "street", "location"],
       "abbreviations": [
         "bill_addr",
         "billing_addr",
@@ -110,14 +103,6 @@
       "validators": [],
       "description": "Shipping address line",
       "example": "14 MG Road",
-      "lemmas": [
-        "shipping",
-        "delivery",
-        "ship",
-        "address",
-        "street",
-        "location"
-      ],
       "abbreviations": [
         "ship_addr",
         "shipping_addr",
@@ -131,7 +116,6 @@
       "validators": ["non_empty"],
       "description": "City",
       "example": "Bengaluru",
-      "lemmas": ["city", "town", "municipality", "urban"],
       "abbreviations": []
     },
     "state": {
@@ -140,7 +124,6 @@
       "validators": [],
       "description": "State/Province",
       "example": "Karnataka",
-      "lemmas": ["state", "province", "region", "territory"],
       "abbreviations": []
     },
     "postal_code": {
@@ -149,7 +132,6 @@
       "validators": [],
       "description": "Zip/Postal",
       "example": "560095",
-      "lemmas": ["postal", "zip", "code", "pincode", "postcode"],
       "abbreviations": [
         "zip",
         "zipcode",
@@ -165,7 +147,6 @@
       "validators": ["non_empty"],
       "description": "Country",
       "example": "India",
-      "lemmas": ["country", "nation", "territory"],
       "abbreviations": []
     },
     "product_sku": {
@@ -174,7 +155,6 @@
       "validators": ["non_empty"],
       "description": "SKU code",
       "example": "SW-1234",
-      "lemmas": ["product", "sku", "stock", "keeping", "unit", "code", "item"],
       "abbreviations": ["sku", "product_code", "item_code", "prod_sku"]
     },
     "product_name": {
@@ -183,7 +163,6 @@
       "validators": ["non_empty"],
       "description": "Item name",
       "example": "Alpha SaaS",
-      "lemmas": ["product", "item", "name", "title", "service"],
       "abbreviations": ["product", "prod_name", "item_name", "item"]
     },
     "category": {
@@ -192,7 +171,6 @@
       "validators": [],
       "description": "Category",
       "example": "Software Subscription",
-      "lemmas": ["category", "class", "type", "group", "classification"],
       "abbreviations": ["cat", "prod_category", "product_category"]
     },
     "subcategory": {
@@ -201,7 +179,6 @@
       "validators": [],
       "description": "Subcategory if any",
       "example": "Enterprise",
-      "lemmas": ["subcategory", "subclass", "subtype", "subgroup"],
       "abbreviations": [
         "subcat",
         "sub_cat",
@@ -215,7 +192,6 @@
       "validators": ["non_empty"],
       "description": "Units ordered",
       "example": "3",
-      "lemmas": ["quantity", "qty", "amount", "count", "units", "number"],
       "abbreviations": ["qty", "quan", "count", "units"]
     },
     "unit_price": {
@@ -224,7 +200,6 @@
       "validators": ["non_empty"],
       "description": "Price per unit",
       "example": "4999.99",
-      "lemmas": ["unit", "price", "cost", "rate", "amount", "each"],
       "abbreviations": ["price", "cost", "rate", "unit_cost", "each"]
     },
     "currency": {
@@ -233,7 +208,6 @@
       "validators": ["non_empty", "regex:^[A-Z]{3}$"],
       "description": "Currency code",
       "example": "INR",
-      "lemmas": ["currency", "money", "denomination", "code"],
       "abbreviations": ["curr", "currency_code"]
     },
     "discount_pct": {
@@ -242,7 +216,6 @@
       "validators": ["range:0,1"],
       "description": "Discount fraction (0-1)",
       "example": "0.1",
-      "lemmas": ["discount", "reduction", "percent", "percentage", "off"],
       "abbreviations": [
         "discount",
         "disc",
@@ -256,7 +229,6 @@
       "validators": ["range:0,1"],
       "description": "Tax fraction (0-1)",
       "example": "0.18",
-      "lemmas": ["tax", "vat", "gst", "percent", "percentage", "rate"],
       "abbreviations": ["tax", "tax_percent", "tax_percentage", "vat", "gst"]
     },
     "shipping_fee": {
@@ -265,7 +237,6 @@
       "validators": [],
       "description": "Shipping amount",
       "example": "199.0",
-      "lemmas": ["shipping", "delivery", "fee", "cost", "charge"],
       "abbreviations": [
         "ship_fee",
         "shipping_cost",
@@ -279,7 +250,6 @@
       "validators": ["non_empty"],
       "description": "Total amount charged",
       "example": "16999.00",
-      "lemmas": ["total", "amount", "sum", "charged", "final", "grand"],
       "abbreviations": ["total", "grand_total", "final_amount", "amount_total"]
     },
     "tax_id": {
@@ -288,7 +258,6 @@
       "validators": [],
       "description": "Tax/GST/VAT identifier",
       "example": "29ABCDE1234F1Z5",
-      "lemmas": ["tax", "gst", "vat", "id", "identifier", "registration"],
       "abbreviations": ["taxid", "tax_number", "gst_number", "vat_number"]
     }
   }
