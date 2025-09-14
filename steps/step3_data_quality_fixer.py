@@ -5,6 +5,7 @@ import streamlit as st
 
 from common_utils.constants import CONSTANTS
 from common_utils.data_validator import DataValidator
+from common_utils.gemini_agent import GeminiAgent
 
 
 def data_quality_fixer():
@@ -30,6 +31,7 @@ def data_quality_fixer():
         st.session_state.validation_results = None
         st.session_state.applied_fixes = []
         st.session_state.initial_errors = []
+        st.session_state.quality_summary = None
 
     # --- 1. Initial Analysis Button ---
     if st.button("🔍 Analyze Data Quality", type="primary"):
@@ -179,6 +181,35 @@ def data_quality_fixer():
         remaining_df = pd.DataFrame(remaining_errors)
         st.dataframe(remaining_df, width="stretch")
 
+        # --- AI Fix Option ---
+        st.markdown("---")
+        st.subheader("🤖 Try AI-Powered Fixes")
+        st.info(
+            "Can't find deterministic fixes? Let AI analyze these errors and suggest solutions."
+        )
+
+        col1, col2 = st.columns([2, 3])
+
+        with col1:
+            if st.button(
+                f"🚀 Get AI Suggestions ({len(remaining_errors)} errors)",
+                type="secondary",
+                key="ai_fix_button",
+                help="Use AI to analyze remaining errors and suggest fixes",
+            ):
+                get_ai_fix_suggestions(remaining_errors)
+
+        with col2:
+            if CONSTANTS.USE_GEMINI:
+                st.info(
+                    "💡 AI will analyze each error and propose potential fixes for your review."
+                )
+            else:
+                st.warning("⚠️ AI features are disabled. Set USE_GEMINI=true to enable.")
+
+        # Display AI suggestions if available
+        display_ai_fix_suggestions()
+
     # Final proceed button
     if st.button("➡️ Proceed to Review", type="primary", key="final_proceed_btn"):
         # Generate quality summary for review page
@@ -309,6 +340,19 @@ def apply_fixes_to_dataframe(errors: List[Dict], apply_all: bool = True):
         new_validation_results = validator.validate_and_suggest_fixes(updated_df)
         st.session_state.validation_results = new_validation_results
 
+        # Update quality summary for individual fixes
+        current_errors = []
+        current_errors.extend(new_validation_results["remaining_errors"])
+        for fix_group in new_validation_results["grouped_fixes"]:
+            current_errors.extend(fix_group["errors"])
+
+        quality_summary = validator.generate_quality_summary(
+            st.session_state.initial_errors,
+            current_errors,
+            st.session_state.applied_fixes,
+        )
+        st.session_state.quality_summary = quality_summary
+
         # Show success message
         fix_count = len(fixes_to_apply)
         st.success(
@@ -359,6 +403,17 @@ def display_quality_summary():
 
     summary = st.session_state.quality_summary
 
+    # Debug info
+    st.write(f"🔍 Debug: Quality summary data:")
+    st.write(f"- Initial errors: {summary.get('total_initial_errors', 'N/A')}")
+    st.write(f"- Final errors: {summary.get('total_final_errors', 'N/A')}")
+    st.write(f"- Total fixes applied: {summary.get('total_fixes_applied', 'N/A')}")
+    st.write(f"- AI fixes: {summary.get('ai_fixes_applied', 'N/A')}")
+    st.write(
+        f"- Deterministic fixes: {summary.get('deterministic_fixes_applied', 'N/A')}"
+    )
+    st.markdown("---")
+
     st.subheader("📋 Data Quality Summary")
     st.write("Overview of data quality issues found and resolved during validation.")
 
@@ -368,6 +423,21 @@ def display_quality_summary():
     col2.metric("Issues Fixed", summary["total_fixes_applied"])
     col3.metric("Remaining Issues", summary["total_final_errors"])
     col4.metric("Improvement", f"{summary['improvement_percentage']:.1f}%")
+
+    # Show breakdown of fix types if both types were used
+    if (
+        summary.get("ai_fixes_applied", 0) > 0
+        or summary.get("deterministic_fixes_applied", 0) > 0
+    ):
+        st.markdown("---")
+        st.subheader("🔧 Fix Type Breakdown")
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("🤖 AI Fixes", summary.get("ai_fixes_applied", 0))
+        col2.metric(
+            "⚙️ Deterministic Fixes", summary.get("deterministic_fixes_applied", 0)
+        )
+        col3.metric("📈 Total Applied", summary["total_fixes_applied"])
 
     if summary["total_initial_errors"] == 0:
         st.success("🎉 Your data was already clean! No validation issues were found.")
@@ -490,6 +560,17 @@ def apply_all_fixes_global(grouped_fixes: List[Dict[str, Any]]):
     new_validation_results = validator.validate_and_suggest_fixes(updated_df)
     st.session_state.validation_results = new_validation_results
 
+    # Update quality summary for global fixes
+    current_errors = []
+    current_errors.extend(new_validation_results["remaining_errors"])
+    for fix_group in new_validation_results["grouped_fixes"]:
+        current_errors.extend(fix_group["errors"])
+
+    quality_summary = validator.generate_quality_summary(
+        st.session_state.initial_errors, current_errors, st.session_state.applied_fixes
+    )
+    st.session_state.quality_summary = quality_summary
+
     # Show comprehensive success message
     total_fixes = len(fixes_to_apply)
     st.success(f"✅ Applied **{total_fixes}** fixes across all categories!")
@@ -528,4 +609,317 @@ def apply_all_fixes_global(grouped_fixes: List[Dict[str, Any]]):
     else:
         st.info(
             f"📈 **Progress made!** {remaining_fixable} more auto-fixable issues available, {remaining_total} total issues remain."
+        )
+
+
+def get_ai_fix_suggestions(remaining_errors: List[Dict]):
+    """
+    Get AI suggestions for remaining errors.
+    """
+    if not CONSTANTS.USE_GEMINI:
+        st.error("❌ AI features are disabled. Please enable Gemini to use AI fixes.")
+        return
+
+    gemini_agent = GeminiAgent()
+    df = st.session_state.transformed_df
+
+    ai_suggestions = []
+
+    with st.spinner(f"🤖 Analyzing {len(remaining_errors)} errors with AI..."):
+        progress_bar = st.progress(0)
+
+        for i, error in enumerate(remaining_errors):
+            try:
+                # Get AI suggestion for this error
+                suggestion = gemini_agent.suggest_data_fix(error, df)
+
+                if suggestion:
+                    ai_suggestions.append(
+                        {
+                            "error": error,
+                            "ai_suggestion": suggestion,
+                            "status": "pending",  # pending, approved, rejected
+                        }
+                    )
+                else:
+                    ai_suggestions.append(
+                        {
+                            "error": error,
+                            "ai_suggestion": None,
+                            "status": "no_suggestion",
+                        }
+                    )
+
+                # Update progress
+                progress_bar.progress((i + 1) / len(remaining_errors))
+
+            except Exception as e:
+                st.error(
+                    f"AI suggestion failed for error at row {error.get('row', 'unknown')}: {str(e)}"
+                )
+                ai_suggestions.append(
+                    {"error": error, "ai_suggestion": None, "status": "failed"}
+                )
+
+        progress_bar.empty()
+
+    # Store AI suggestions in session state
+    st.session_state.ai_suggestions = ai_suggestions
+
+    successful_suggestions = len(
+        [s for s in ai_suggestions if s["ai_suggestion"] is not None]
+    )
+
+    if successful_suggestions > 0:
+        st.success(
+            f"✅ AI generated {successful_suggestions} suggestions out of {len(remaining_errors)} errors!"
+        )
+    else:
+        st.warning(
+            "⚠️ AI couldn't generate suggestions for any of the remaining errors."
+        )
+
+
+def display_ai_fix_suggestions():
+    """
+    Display AI fix suggestions with approve/reject options.
+    """
+    if "ai_suggestions" not in st.session_state or not st.session_state.ai_suggestions:
+        return
+
+    ai_suggestions = st.session_state.ai_suggestions
+
+    # Count suggestions by status
+    suggestions_with_fixes = [
+        s for s in ai_suggestions if s["ai_suggestion"] is not None
+    ]
+
+    if not suggestions_with_fixes:
+        return
+
+    st.subheader("🎯 AI Suggestions")
+    st.write(
+        f"Review and approve AI suggestions for {len(suggestions_with_fixes)} errors:"
+    )
+
+    # Bulk actions
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("✅ Approve All AI Suggestions", key="approve_all_ai"):
+            apply_bulk_ai_suggestions(suggestions_with_fixes, approve=True)
+            st.rerun()
+
+    with col2:
+        if st.button("❌ Reject All AI Suggestions", key="reject_all_ai"):
+            apply_bulk_ai_suggestions(suggestions_with_fixes, approve=False)
+            st.rerun()
+
+    with col3:
+        approved_count = len(
+            [s for s in suggestions_with_fixes if s["status"] == "approved"]
+        )
+        if approved_count > 0:
+            if st.button(
+                f"🚀 Apply {approved_count} Approved Fixes",
+                key="apply_approved_ai",
+                type="primary",
+            ):
+                apply_approved_ai_fixes()
+                st.rerun()
+
+    # Individual suggestions
+    for i, suggestion_data in enumerate(suggestions_with_fixes):
+        error = suggestion_data["error"]
+        ai_suggestion = suggestion_data["ai_suggestion"]
+        status = suggestion_data["status"]
+
+        with st.expander(
+            f"Row {error['row']} - {error['column']}: '{error['value']}' → '{ai_suggestion}'",
+            expanded=(status == "pending"),
+        ):
+            col1, col2 = st.columns([3, 1])
+
+            with col1:
+                st.write(f"**Error:** {error['message']}")
+                st.write(f"**Current Value:** `{error['value']}`")
+                st.write(f"**AI Suggestion:** `{ai_suggestion}`")
+                st.write(f"**Status:** {status.replace('_', ' ').title()}")
+
+            with col2:
+                if status == "pending":
+                    if st.button("✅ Approve", key=f"approve_ai_{i}"):
+                        st.session_state.ai_suggestions[
+                            suggestions_with_fixes.index(suggestion_data)
+                        ]["status"] = "approved"
+                        st.rerun()
+
+                    if st.button("❌ Reject", key=f"reject_ai_{i}"):
+                        st.session_state.ai_suggestions[
+                            suggestions_with_fixes.index(suggestion_data)
+                        ]["status"] = "rejected"
+                        st.rerun()
+                elif status == "approved":
+                    st.success("✅ Approved")
+                elif status == "rejected":
+                    st.error("❌ Rejected")
+
+
+def apply_bulk_ai_suggestions(suggestions_with_fixes: List[Dict], approve: bool):
+    """
+    Apply bulk approve/reject to all AI suggestions.
+    """
+    new_status = "approved" if approve else "rejected"
+
+    for suggestion_data in suggestions_with_fixes:
+        # Find the index in the main ai_suggestions list
+        for i, ai_sug in enumerate(st.session_state.ai_suggestions):
+            if (
+                ai_sug["error"] == suggestion_data["error"]
+                and ai_sug["ai_suggestion"] == suggestion_data["ai_suggestion"]
+            ):
+                st.session_state.ai_suggestions[i]["status"] = new_status
+                break
+
+    action = "approved" if approve else "rejected"
+    st.success(f"✅ {action.title()} {len(suggestions_with_fixes)} AI suggestions!")
+
+
+def apply_approved_ai_fixes():
+    """
+    Apply all approved AI fixes to the dataframe.
+    """
+    if "ai_suggestions" not in st.session_state:
+        return
+
+    validator = DataValidator()
+    approved_suggestions = [
+        s
+        for s in st.session_state.ai_suggestions
+        if s["status"] == "approved" and s["ai_suggestion"] is not None
+    ]
+
+    if not approved_suggestions:
+        st.warning("⚠️ No approved AI suggestions to apply.")
+        return
+
+    # Prepare fixes for application
+    ai_fixes_to_apply = []
+    for suggestion_data in approved_suggestions:
+        error = suggestion_data["error"]
+        ai_suggestion = suggestion_data["ai_suggestion"]
+
+        ai_fixes_to_apply.append(
+            {"row": error["row"], "column": error["column"], "new_value": ai_suggestion}
+        )
+
+    # Debug: Show before applying fixes
+    st.info(f"🔍 Debug: Applying AI fixes to {len(ai_fixes_to_apply)} rows...")
+
+    # Debug: Check if row indices are valid
+    df = st.session_state.transformed_df
+    for i, fix in enumerate(ai_fixes_to_apply):
+        row_idx = fix["row"]
+        column = fix["column"]
+        if row_idx not in df.index:
+            st.error(
+                f"❌ Debug: Row index {row_idx} not found in dataframe (max index: {df.index.max()})"
+            )
+        elif column not in df.columns:
+            st.error(f"❌ Debug: Column {column} not found in dataframe")
+        else:
+            old_value = df.at[row_idx, column]
+            st.write(
+                f"🔍 Debug Fix {i+1}: Row {row_idx}, {column}: '{old_value}' → '{fix['new_value']}'"
+            )
+
+    # Apply AI fixes to the dataframe
+    original_df = st.session_state.transformed_df.copy()
+    updated_df = validator.apply_fixes(
+        st.session_state.transformed_df, ai_fixes_to_apply
+    )
+
+    # Debug: Check if dataframe actually changed
+    if not original_df.equals(updated_df):
+        st.success(f"✅ Debug: DataFrame successfully updated with AI fixes")
+
+        # Show a sample of what changed
+        for fix in ai_fixes_to_apply[:3]:  # Show first 3 fixes
+            row_idx = fix["row"]
+            column = fix["column"]
+            new_value = fix["new_value"]
+            old_value = original_df.at[row_idx, column]
+            actual_new_value = updated_df.at[row_idx, column]
+            st.write(
+                f"Row {row_idx}, {column}: '{old_value}' → '{actual_new_value}' (expected: '{new_value}')"
+            )
+            if str(actual_new_value) != str(new_value):
+                st.warning(
+                    f"⚠️ Warning: Expected '{new_value}' but got '{actual_new_value}'"
+                )
+
+        # Show the actual dataframe rows that changed
+        st.write("🔍 Debug: Updated rows in dataframe:")
+        changed_rows = []
+        for fix in ai_fixes_to_apply[:3]:
+            changed_rows.append(fix["row"])
+        if changed_rows:
+            st.dataframe(updated_df.loc[changed_rows], width="stretch")
+    else:
+        st.error("❌ Debug: DataFrame was not updated - fixes may have failed")
+
+    st.session_state.transformed_df = updated_df
+
+    # Track applied fixes (mark them as AI fixes)
+    for fix in ai_fixes_to_apply:
+        fix["fix_type"] = "ai_fix"  # Mark as AI fix for summary
+
+    st.session_state.applied_fixes.extend(ai_fixes_to_apply)
+
+    # Re-run validation to update results
+    new_validation_results = validator.validate_and_suggest_fixes(updated_df)
+    st.session_state.validation_results = new_validation_results
+
+    # Update quality summary with AI fixes applied
+    current_errors = []
+    current_errors.extend(new_validation_results["remaining_errors"])
+    for fix_group in new_validation_results["grouped_fixes"]:
+        current_errors.extend(fix_group["errors"])
+
+    quality_summary = validator.generate_quality_summary(
+        st.session_state.initial_errors, current_errors, st.session_state.applied_fixes
+    )
+    st.session_state.quality_summary = quality_summary
+
+    # Clear AI suggestions since they've been applied
+    st.session_state.ai_suggestions = []
+
+    # Show success message
+    fix_count = len(ai_fixes_to_apply)
+    st.success(
+        f"✅ Applied {fix_count} AI-suggested fix{'es' if fix_count > 1 else ''} successfully!"
+    )
+
+    # Show summary of what was fixed
+    with st.expander("View Applied AI Fixes", expanded=False):
+        applied_df = pd.DataFrame(ai_fixes_to_apply)
+        st.dataframe(applied_df, width="stretch")
+
+    # Show improvement metrics
+    remaining_total = new_validation_results["total_errors"]
+
+    # Debug: Show validation results
+    st.write(f"🔍 Debug: After AI fixes - Total errors: {remaining_total}")
+    st.write(
+        f"🔍 Debug: Total fixes applied so far: {len(st.session_state.applied_fixes)}"
+    )
+
+    if remaining_total == 0:
+        st.balloons()
+        st.success(
+            "🎉 **Perfect!** All validation issues have been resolved with AI assistance!"
+        )
+    else:
+        st.info(
+            f"📈 **Progress made!** {remaining_total} issues still remain after AI fixes."
         )

@@ -677,16 +677,24 @@ class DataValidator:
                 summary["column_summary"][column]["error_types"]
             )
 
-        # Fix type breakdown (by fix pattern)
+        # Fix type breakdown (by fix pattern and type)
         fix_patterns = {}
+        ai_fixes_count = 0
+
         for fix in applied_fixes:
-            # We need to reconstruct the fix pattern from the applied fix
-            # This is a simplified version - in practice you might want to store this info
+            fix_type = fix.get("fix_type", "deterministic")
             column = fix.get("column", "Unknown")
-            if column not in fix_patterns:
-                fix_patterns[column] = 0
-            fix_patterns[column] += 1
+
+            # Count AI fixes separately
+            if fix_type == "ai_fix":
+                ai_fixes_count += 1
+
+            # Group by column and type
+            fix_key = f"{column} ({fix_type.replace('_', ' ').title()})"
+            fix_patterns[fix_key] = fix_patterns.get(fix_key, 0) + 1
 
         summary["fix_breakdown"] = fix_patterns
+        summary["ai_fixes_applied"] = ai_fixes_count
+        summary["deterministic_fixes_applied"] = len(applied_fixes) - ai_fixes_count
 
         return summary

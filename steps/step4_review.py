@@ -31,8 +31,11 @@ def review_results():
     st.info("Here's a preview of your transformed data with canonical column names:")
 
     if "transformed_df" in st.session_state:
+        # Debug: Show dataframe info
+        df = st.session_state.transformed_df
+
         # Show 5 rows by default
-        st.dataframe(st.session_state.transformed_df.head(5), width="stretch")
+        st.dataframe(df.head(5), width="stretch")
 
         # Show basic info about the dataframe
         col1, col2 = st.columns(2)

@@ -24,7 +24,7 @@ class SummaryKey:
 
 
 class CONSTANTS:
-    USE_GEMINI = os.getenv("USE_GEMINI", "False").lower() == "true"
+    USE_GEMINI = os.getenv("USE_GEMINI", "True").lower() == "true"
     GEMINI_API_KEY = os.getenv(
         "GEMINI_API_KEY", "AIzaSyDxP9FY64eiv3NqB7MXqQvpKAZ9BQ_KWAo"
     )
