@@ -80,6 +80,6 @@ def data_quality_fixer():
     errors_df = pd.DataFrame(errors)
     st.dataframe(errors_df, width="stretch")
 
-    st.info(
-        "The next step is to build an interactive queue to fix these errors with AI-powered suggestions."
-    )
+    if st.button("➡️ Proceed to Review", type="primary", key="proceed_btn"):
+        st.session_state.step = 4
+        st.rerun()

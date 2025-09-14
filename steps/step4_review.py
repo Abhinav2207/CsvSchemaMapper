@@ -1,194 +1,179 @@
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+
+
 def review_results():
-    pass
+    """Step 4: Review final results and download transformed CSV."""
+    st.header("✅ Step 4: Review Final Results")
 
+    if not st.session_state.mapping_results or st.session_state.transformed_df is None:
+        st.error(
+            "❌ No results found. Please go back to Step 3 and complete data cleaning."
+        )
+        return
 
-# def step4_review_results():
-#     """Step 3: Review final results and download transformed CSV."""
-#     st.header("✅ Step 3: Review Final Results")
+    st.markdown(
+        """
+    Review the final results including the transformed CSV with updated column headers.
+    You can download the transformed data or start over with a new file.
+    """
+    )
 
-#     if not st.session_state.mapping_results or st.session_state.transformed_df is None:
-#         st.error("❌ No results found. Please go back to Step 2 and apply mappings.")
-#         return
+    # --- 1. Show Transformed DataFrame Head ---
+    st.subheader("📊 Transformed Data Preview")
+    st.info("Here's a preview of your transformed data with canonical column names:")
 
-#     st.markdown(
-#         """
-#     Review the final results including the transformed CSV with updated column headers.
-#     You can download the transformed data or start over with a new file.
-#     """
-#     )
+    if "transformed_df" in st.session_state:
+        # Show 5 rows by default
+        st.dataframe(st.session_state.transformed_df.head(5), width="stretch")
 
-#     results = st.session_state.mapping_results
+        # Show basic info about the dataframe
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("📋 Total Rows", len(st.session_state.transformed_df))
+        with col2:
+            st.metric("📋 Total Columns", len(st.session_state.transformed_df.columns))
 
-#     # Summary
-#     st.subheader("📋 Final Mapping Summary")
+    # --- 2. Show Applied Transformations Summary ---
+    st.subheader("🔄 Applied Transformations")
 
-#     successful_mappings = [r for r in results if r["suggested_canonical"]]
-#     failed_mappings = [r for r in results if not r["suggested_canonical"]]
-#     ai_mappings = [r for r in results if r.get("gemini_suggested")]
+    if st.session_state.get("applied_mappings"):
+        st.success(
+            f"✅ Successfully applied {len(st.session_state.applied_mappings)} column mappings:"
+        )
 
-#     col1, col2, col3 = st.columns(3)
-#     with col1:
-#         st.metric("✅ Successfully Mapped", len(successful_mappings))
-#     with col2:
-#         st.metric("❌ No Match Found", len(failed_mappings))
-#     with col3:
-#         st.metric("🤖 AI-Suggested", len(ai_mappings))
+        # Show mapping summary in expandable section
+        with st.expander("📋 View All Column Mappings", expanded=False):
+            transformation_data = []
+            for original, canonical in st.session_state.applied_mappings.items():
+                transformation_data.append(
+                    {"Original Header": original, "New Header (Canonical)": canonical}
+                )
 
-#     # Successful mappings
-#     if successful_mappings:
-#         st.subheader("✅ Successfully Mapped Fields")
+            if transformation_data:
+                transformation_df = pd.DataFrame(transformation_data)
+                st.dataframe(transformation_df, width="stretch")
+    else:
+        st.info("ℹ️ No column transformations were applied.")
 
-#         mapping_data = []
-#         for result in successful_mappings:
-#             mapping_data.append(
-#                 {
-#                     "Your Header": result["original_header"],
-#                     "Canonical Field": result["suggested_canonical"],
-#                     "Confidence": f"{result['confidence']:.2f}",
-#                     "Method": result.get("mapping_method", "Unknown"),
-#                     "Sample Data": ", ".join(result["sample_values"][:2]),
-#                 }
-#             )
+    # --- 3. Mapping Summary Statistics ---
+    if st.session_state.get("mapping_summary"):
+        st.subheader("📈 Mapping Summary")
+        summary = st.session_state.mapping_summary
 
-#         mapping_df = pd.DataFrame(mapping_data)
-#         st.dataframe(mapping_df, width="stretch")
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            st.metric("🎯 Exact Matches", summary.get("exact_matches", 0))
+        with col2:
+            st.metric("📚 Abbreviation", summary.get("abbreviation_matches", 0))
+        with col3:
+            st.metric("🔍 Fuzzy Matches", summary.get("fuzzy_matches", 0))
+        with col4:
+            st.metric("🤖 AI Matches", summary.get("gemini_matches", 0))
+        with col5:
+            st.metric("✋ Manual Matches", summary.get("manual_matches", 0))
 
-#     # Failed mappings
-#     if failed_mappings:
-#         st.subheader("❌ Fields That Need Attention")
-#         st.warning(
-#             f"Found {len(failed_mappings)} headers that couldn't be automatically mapped."
-#         )
+        success_rate = summary.get("mapping_percentage", 0)
+        st.progress(
+            int(success_rate) / 100, text=f"Overall Success Rate: {success_rate:.1f}%"
+        )
 
-#         failed_data = []
-#         for result in failed_mappings:
-#             failed_data.append(
-#                 {
-#                     "Header": result["original_header"],
-#                     "Lemmatized": ", ".join(result.get("normalized_lemmas", [])),
-#                     "Sample Values": ", ".join(result["sample_values"][:2]),
-#                 }
-#             )
+    # --- 4. Download Options ---
+    st.subheader("💾 Download Options")
 
-#         failed_df = pd.DataFrame(failed_data)
-#         st.dataframe(failed_df, width="stretch")
+    # Prepare download data
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    original_name = st.session_state.get("original_filename", "data").replace(
+        ".csv", ""
+    )
 
-#     # Show applied transformations
-#     st.subheader("🔄 Applied Transformations")
+    col1, col2, col3 = st.columns(3)
 
-#     if st.session_state.applied_mappings:
-#         st.success(
-#             f"✅ Successfully applied {len(st.session_state.applied_mappings)} column mappings:"
-#         )
+    with col1:
+        # Download transformed CSV (main output)
+        if st.session_state.transformed_df is not None:
+            transformed_csv = st.session_state.transformed_df.to_csv(index=False)
 
-#         transformation_data = []
-#         for original, canonical in st.session_state.applied_mappings.items():
-#             transformation_data.append(
-#                 {"Original Header": original, "New Header (Canonical)": canonical}
-#             )
+            st.download_button(
+                label="📥 **Download Transformed CSV**",
+                data=transformed_csv,
+                file_name=f"{original_name}_transformed_{timestamp}.csv",
+                mime="text/csv",
+                type="primary",
+                help="Download CSV with updated column headers",
+            )
 
-#         transformation_df = pd.DataFrame(transformation_data)
-#         st.dataframe(transformation_df, width="stretch")
+    with col2:
+        # Download original data for comparison
+        if st.session_state.get("uploaded_df") is not None:
+            original_csv = st.session_state.uploaded_df.to_csv(index=False)
 
-#         # Show before/after comparison
-#         st.subheader("📊 Data Comparison")
+            st.download_button(
+                label="📥 Download Original CSV",
+                data=original_csv,
+                file_name=f"{original_name}_original_{timestamp}.csv",
+                mime="text/csv",
+                help="Download original data for comparison",
+            )
 
-#         col1, col2 = st.columns(2)
+    with col3:
+        # Download mappings as CSV
+        if st.session_state.get("applied_mappings"):
+            mappings_data = []
+            for original, canonical in st.session_state.applied_mappings.items():
+                mappings_data.append(f"{original},{canonical}")
 
-#         with col1:
-#             st.markdown("**🔸 Original Data**")
-#             st.dataframe(st.session_state.uploaded_df.head(5), width="stretch")
+            csv_mapping = "Original Header,Canonical Field\n" + "\n".join(mappings_data)
 
-#         with col2:
-#             st.markdown("**🔹 Transformed Data**")
-#             st.dataframe(st.session_state.transformed_df.head(5), width="stretch")
+            st.download_button(
+                label="📥 Download Mappings CSV",
+                data=csv_mapping,
+                file_name=f"{original_name}_mappings_{timestamp}.csv",
+                mime="text/csv",
+                help="Summary of column mappings",
+            )
 
-#     else:
-#         st.info("ℹ️ No transformations were applied.")
+    # --- 5. Data Quality Info ---
+    if st.session_state.get("validation_errors"):
+        st.subheader("⚠️ Data Quality Issues")
+        error_count = len(st.session_state.validation_errors)
+        if error_count > 0:
+            st.warning(
+                f"Found {error_count} data quality issues. Consider reviewing Step 3 for data cleaning."
+            )
 
-#     # Download results
-#     st.subheader("💾 Download Options")
+    # --- 6. API Usage Summary ---
+    gemini_calls = st.session_state.get("gemini_calls_count", 0)
+    if gemini_calls > 0:
+        st.subheader("🤖 AI Usage")
+        st.info(f"Total Gemini API calls made during this session: {gemini_calls}")
 
-#     # Prepare download data
-#     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-#     original_name = st.session_state.original_filename.replace(".csv", "")
+    # --- 7. Navigation Buttons ---
+    st.subheader("🚀 Next Steps")
+    col1, col2, col3 = st.columns(3)
 
-#     # Create mapping report
-#     report_data = {
-#         "original_filename": st.session_state.original_filename,
-#         "analysis_timestamp": timestamp,
-#         "total_headers": len(results),
-#         "successful_mappings": len(successful_mappings),
-#         "failed_mappings": len(failed_mappings),
-#         "ai_calls_made": st.session_state.gemini_calls_count,
-#         "mapping_details": results,
-#     }
+    with col1:
+        if st.button("🔄 Start Over", type="secondary"):
+            # Reset session state
+            st.session_state.step = 1
+            st.session_state.uploaded_df = None
+            st.session_state.mapping_results = []
+            st.session_state.gemini_calls_count = 0
+            st.session_state.transformed_df = None
+            st.session_state.applied_mappings = {}
+            st.session_state.original_filename = ""
+            st.session_state.mappings_applied = False
+            if "validation_errors" in st.session_state:
+                del st.session_state.validation_errors
+            st.rerun()
 
-#     import json
+    with col2:
+        if st.button("⬅️ Back to Data Quality", type="secondary"):
+            st.session_state.step = 3
+            st.rerun()
 
-#     report_json = json.dumps(report_data, indent=2, default=str)
-
-#     col1, col2, col3 = st.columns(3)
-
-#     with col1:
-#         # Download transformed CSV (main output)
-#         if st.session_state.transformed_df is not None:
-#             transformed_csv = st.session_state.transformed_df.to_csv(index=False)
-
-#             st.download_button(
-#                 label="📥 **Download Transformed CSV**",
-#                 data=transformed_csv,
-#                 file_name=f"{original_name}_transformed_{timestamp}.csv",
-#                 mime="text/csv",
-#                 type="primary",
-#                 help="Download CSV with updated column headers",
-#             )
-
-#     with col2:
-#         # Download mapping report
-#         st.download_button(
-#             label="📥 Download Mapping Report (JSON)",
-#             data=report_json,
-#             file_name=f"{original_name}_mapping_report_{timestamp}.json",
-#             mime="application/json",
-#             help="Detailed analysis report",
-#         )
-
-#     with col3:
-#         # Simple CSV mapping
-#         if successful_mappings:
-#             csv_mapping = "Original Header,Canonical Field,Confidence,Method\n"
-#             for result in successful_mappings:
-#                 csv_mapping += f"{result['original_header']},{result['suggested_canonical']},{result['confidence']:.2f},{result.get('mapping_method', 'Unknown')}\n"
-
-#             st.download_button(
-#                 label="📥 Download Mappings (CSV)",
-#                 data=csv_mapping,
-#                 file_name=f"{original_name}_mappings_{timestamp}.csv",
-#                 mime="text/csv",
-#                 help="Summary of column mappings",
-#             )
-
-#     # Action buttons
-#     st.subheader("🚀 Next Steps")
-#     col1, col2 = st.columns(2)
-
-#     with col1:
-#         if st.button("🔄 Start Over", key="restart"):
-#             # Reset session state
-#             st.session_state.step = 1
-#             st.session_state.uploaded_df = None
-#             st.session_state.mapping_results = []
-#             st.session_state.gemini_calls_count = 0
-#             st.session_state.transformed_df = None
-#             st.session_state.applied_mappings = {}
-#             st.session_state.original_filename = ""
-#             st.rerun()
-
-#     with col2:
-#         if st.button("⬅️ Back to Analysis", key="back_to_step2"):
-#             # Reset transformations when going back to mapping
-#             st.session_state.transformed_df = None
-#             st.session_state.applied_mappings = {}
-#             st.session_state.step = 2
-#             st.rerun()
+    with col3:
+        if st.button("🏠 Back to Schema Mapping", type="secondary"):
+            st.session_state.step = 2
+            st.rerun()
