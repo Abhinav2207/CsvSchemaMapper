@@ -1,10 +1,8 @@
 import pandas as pd
 import streamlit as st
 
+from common_utils.constants import CONSTANTS
 from common_utils.data_validator import DataValidator
-
-# Define a threshold for how much missing data is acceptable before halting.
-MISSING_DATA_THRESHOLD = 10.0
 
 
 def data_quality_fixer():
@@ -13,14 +11,21 @@ def data_quality_fixer():
     """
     st.header("Step 3: Clean & Validate Data")
 
-    if "transformed_df" not in st.session_state or st.session_state.transformed_df is None:
-        st.warning("No mapped data found. Please complete Step 2 and apply mappings first.")
+    if (
+        "transformed_df" not in st.session_state
+        or st.session_state.transformed_df is None
+    ):
+        st.warning(
+            "No mapped data found. Please complete Step 2 and apply mappings first."
+        )
         return
 
     # --- 1. User-Triggered Analysis ---
     # The analysis runs only when the user clicks the button.
     if st.button("🔍 Run Data Quality Analysis", type="primary"):
-        with st.spinner("Analyzing data against canonical rules... This may take a moment."):
+        with st.spinner(
+            "Analyzing data against canonical rules... This may take a moment."
+        ):
             df = st.session_state.transformed_df
             validator = DataValidator()
 
@@ -39,14 +44,16 @@ def data_quality_fixer():
 
     st.subheader("Missing Data Analysis (for required fields)")
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total Rows", missing_summary.get('total_rows', 'N/A'))
-    col2.metric("Rows with Missing Data", missing_summary.get('rows_with_missing_data', 'N/A'))
+    col1.metric("Total Rows", missing_summary.get("total_rows", "N/A"))
+    col2.metric(
+        "Rows with Missing Data", missing_summary.get("rows_with_missing_data", "N/A")
+    )
     col3.metric("Missing Data Ratio", f"{missing_percentage:.1f}%")
 
-    if missing_percentage > MISSING_DATA_THRESHOLD:
+    if missing_percentage > CONSTANTS.MISSING_DATA_THRESHOLD:
         st.error(
             f"**Process Halted:** Missing data ratio ({missing_percentage:.1f}%) "
-            f"exceeds the threshold of {MISSING_DATA_THRESHOLD:.1f}%. "
+            f"exceeds the threshold of {CONSTANTS.MISSING_DATA_THRESHOLD:.1f}%. "
             "AI-powered fixing is not recommended for this volume of missing data. "
             "Please fix the source data before proceeding."
         )
@@ -63,8 +70,10 @@ def data_quality_fixer():
     if not errors:
         st.success("✅ **Congratulations! No validation errors were found.**")
         st.balloons()
-        st.info("Your data appears to be clean and valid according to the canonical schema. "
-                "You can now proceed to the final review step.")
+        st.info(
+            "Your data appears to be clean and valid according to the canonical schema. "
+            "You can now proceed to the final review step."
+        )
         # Here you would typically enable navigation to the next step.
         return
 
@@ -73,7 +82,8 @@ def data_quality_fixer():
 
     # Displaying errors in a DataFrame is clean and efficient.
     errors_df = pd.DataFrame(errors)
-    st.dataframe(errors_df, use_container_width=True)
+    st.dataframe(errors_df, width="stretch")
 
-    st.info("The next step is to build an interactive queue to fix these errors with AI-powered suggestions.")
-
+    st.info(
+        "The next step is to build an interactive queue to fix these errors with AI-powered suggestions."
+    )

@@ -1,6 +1,7 @@
-import boto3
 import json
 from typing import Dict, List, Optional
+
+import boto3
 import pandas as pd
 from rapidfuzz import fuzz
 
@@ -135,9 +136,7 @@ Only return the JSON, no other text."""
                             break
         return mappings
 
-    def suggest_data_fix(
-        self, error: Dict, df: pd.DataFrame
-    ) -> Optional[str]:
+    def suggest_data_fix(self, error: Dict, df: pd.DataFrame) -> Optional[str]:
         """
         Query Bedrock to suggest a fix for a single data validation error.
 
@@ -203,7 +202,9 @@ Instructions:
             return suggestion_json.get("suggestion")
 
         except Exception as e:
-            print(f"Bedrock data fix suggestion failed for value '{invalid_value}': {e}")
+            print(
+                f"Bedrock data fix suggestion failed for value '{invalid_value}': {e}"
+            )
             return None
 
     def _get_sample_values(
@@ -218,4 +219,3 @@ Instructions:
             sample_values.append(str(value))
 
         return sample_values
-

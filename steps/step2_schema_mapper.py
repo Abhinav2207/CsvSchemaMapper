@@ -1,7 +1,6 @@
-import pandas as pd
 import streamlit as st
 
-from common_utils.constants import MatchMethod, SummaryKey
+from common_utils.constants import SummaryKey
 from common_utils.schema_mapper import SchemaMapper
 from modules.schema_loader import get_schema_loader
 
@@ -94,7 +93,7 @@ def schema_mapper():
                 options=mapping_options,
                 index=default_index,
                 label_visibility="collapsed",
-                key=f"select_{i}"
+                key=f"select_{i}",
             )
             user_overrides[original_header] = user_choice
         with c3:
@@ -111,7 +110,7 @@ def schema_mapper():
             st.session_state.step = 1
             # Clear state for this step before going back
             st.session_state.mapping_results = []
-            st.session_state.pop('mapping_summary', None)
+            st.session_state.pop("mapping_summary", None)
             st.rerun()
 
     with col2:
@@ -126,13 +125,13 @@ def schema_mapper():
             transformed_df = df.rename(columns=rename_map)
 
             cols_to_drop = [
-                header for header, choice in user_overrides.items()
+                header
+                for header, choice in user_overrides.items()
                 if choice == "-- DO NOT MAP --"
             ]
-            transformed_df.drop(columns=cols_to_drop, inplace=True, errors='ignore')
+            transformed_df.drop(columns=cols_to_drop, inplace=True, errors="ignore")
 
             st.session_state.transformed_df = transformed_df
             st.session_state.applied_mappings = rename_map
             st.session_state.step = 3
             st.rerun()
-

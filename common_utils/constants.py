@@ -1,4 +1,3 @@
-from enum import Enum
 import os
 from typing import List
 
@@ -27,3 +26,4 @@ class CONSTANTS:
     USE_BEDROCK = os.getenv("USE_BEDROCK", "False").lower() == "true"
     BEDROCK_REGION = os.getenv("BEDROCK_REGION", "us-east-1")
     BEDROCK_MODEL = os.getenv("BEDROCK_MODEL", "anthropic.claude-3-haiku-20240307-v1:0")
+    MISSING_DATA_THRESHOLD = float(os.getenv("MISSING_DATA_THRESHOLD", "10.0"))

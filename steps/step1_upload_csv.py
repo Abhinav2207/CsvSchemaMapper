@@ -8,13 +8,21 @@ def upload_csv():
 
     # The file uploader is now part of this step, making it self-contained.
     uploaded_file = st.file_uploader(
-        "Choose a CSV file to begin the process", type=["csv"], help="Upload a CSV file to analyze"
+        "Choose a CSV file to begin the process",
+        type=["csv"],
+        help="Upload a CSV file to analyze",
     )
 
     if uploaded_file is not None:
         try:
             # Clear any data from previous runs to ensure a fresh start
-            for key in ['uploaded_df', 'original_filename', 'mapping_results', 'transformed_df', 'validation_errors']:
+            for key in [
+                "uploaded_df",
+                "original_filename",
+                "mapping_results",
+                "transformed_df",
+                "validation_errors",
+            ]:
                 if key in st.session_state:
                     del st.session_state[key]
 
@@ -24,7 +32,7 @@ def upload_csv():
             st.session_state.original_filename = uploaded_file.name
 
             st.success(f"✅ Successfully loaded **{uploaded_file.name}**")
-            st.dataframe(df.head(5), use_container_width=True)
+            st.dataframe(df.head(5), width="stretch")
 
             # Navigation Button to proceed to the next step
             if st.button("➡️ Proceed to Schema Mapping", type="primary"):
@@ -33,4 +41,3 @@ def upload_csv():
 
         except Exception as e:
             st.error(f"❌ Error reading file: {str(e)}")
-

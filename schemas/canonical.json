@@ -239,7 +239,7 @@
     "discount_pct": {
       "display": "Discount Percentage",
       "type": "numeric",
-      "validators": [],
+      "validators": ["range:0,1"],
       "description": "Discount fraction (0-1)",
       "example": "0.1",
       "lemmas": ["discount", "reduction", "percent", "percentage", "off"],
@@ -253,7 +253,7 @@
     "tax_pct": {
       "display": "Tax Percentage",
       "type": "numeric",
-      "validators": [],
+      "validators": ["range:0,1"],
       "description": "Tax fraction (0-1)",
       "example": "0.18",
       "lemmas": ["tax", "vat", "gst", "percent", "percentage", "rate"],
