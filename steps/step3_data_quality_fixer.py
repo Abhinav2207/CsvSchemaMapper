@@ -22,16 +22,12 @@ def data_quality_fixer():
 
     # --- 1. User-Triggered Analysis ---
     # The analysis runs only when the user clicks the button.
-    if st.button("🔍 Run Data Quality Analysis", type="primary"):
-        with st.spinner(
-            "Analyzing data against canonical rules... This may take a moment."
-        ):
-            df = st.session_state.transformed_df
-            validator = DataValidator()
+    df = st.session_state.transformed_df
+    validator = DataValidator()
 
-            # The results are stored in the session state to prevent re-calculation.
-            st.session_state.missing_summary = validator.get_missing_data_summary(df)
-            st.session_state.validation_errors = validator.validate_dataframe(df)
+    # The results are stored in the session state to prevent re-calculation.
+    st.session_state.missing_summary = validator.get_missing_data_summary(df)
+    st.session_state.validation_errors = validator.validate_dataframe(df)
 
     # --- 2. Display Results (if they exist in the session state) ---
     if "missing_summary" not in st.session_state:

@@ -5,9 +5,8 @@ Handles loading and accessing canonical schema definitions and synonym mappings.
 """
 
 import json
-import os
-from typing import Dict, List, Any, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 class SchemaLoader:
@@ -22,7 +21,7 @@ class SchemaLoader:
         """
         self.schemas_dir = Path(schemas_dir)
         self.canonical_schema = None
-        self.synonyms = None
+        # self.synonyms = None
         self._load_schemas()
 
     def _load_schemas(self) -> None:
@@ -32,11 +31,6 @@ class SchemaLoader:
             canonical_path = self.schemas_dir / "canonical.json"
             with open(canonical_path, "r", encoding="utf-8") as f:
                 self.canonical_schema = json.load(f)
-
-            # Load synonyms
-            synonyms_path = self.schemas_dir / "synonyms.json"
-            with open(synonyms_path, "r", encoding="utf-8") as f:
-                self.synonyms = json.load(f)
 
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Schema file not found: {e}")
@@ -66,31 +60,6 @@ class SchemaLoader:
         """
         columns = self.get_canonical_columns()
         return columns.get(column_name)
-
-    def get_column_synonyms(self, column_name: str) -> List[str]:
-        """
-        Get synonyms for a canonical column.
-
-        Args:
-            column_name: Name of the canonical column
-
-        Returns:
-            List of synonym strings
-        """
-        if not self.synonyms:
-            raise ValueError("Synonyms not loaded")
-        return self.synonyms.get("synonyms", {}).get(column_name, [])
-
-    def get_all_synonyms(self) -> Dict[str, List[str]]:
-        """
-        Get all synonym mappings.
-
-        Returns:
-            Dictionary mapping canonical column names to their synonyms
-        """
-        if not self.synonyms:
-            raise ValueError("Synonyms not loaded")
-        return self.synonyms.get("synonyms", {})
 
     def get_validators_for_column(self, column_name: str) -> List[str]:
         """
