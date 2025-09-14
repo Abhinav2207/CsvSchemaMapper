@@ -1,6 +1,9 @@
-import streamlit as st
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
+import streamlit as st
+
+from .step2_schema_mapper import display_mapping_summary
 
 
 def review_results():
@@ -59,27 +62,18 @@ def review_results():
 
     # --- 3. Mapping Summary Statistics ---
     if st.session_state.get("mapping_summary"):
-        st.subheader("📈 Mapping Summary")
-        summary = st.session_state.mapping_summary
+        display_mapping_summary(st.session_state.mapping_summary)
 
-        col1, col2, col3, col4, col5 = st.columns(5)
-        with col1:
-            st.metric("🎯 Exact Matches", summary.get("exact_matches", 0))
-        with col2:
-            st.metric("📚 Abbreviation", summary.get("abbreviation_matches", 0))
-        with col3:
-            st.metric("🔍 Fuzzy Matches", summary.get("fuzzy_matches", 0))
-        with col4:
-            st.metric("🤖 AI Matches", summary.get("gemini_matches", 0))
-        with col5:
-            st.metric("✋ Manual Matches", summary.get("manual_matches", 0))
+    # --- 4. Data Quality Info ---
+    if st.session_state.get("validation_errors"):
+        st.subheader("⚠️ Data Quality Issues")
+        error_count = len(st.session_state.validation_errors)
+        if error_count > 0:
+            st.warning(
+                f"Found {error_count} data quality issues. Consider reviewing Step 3 for data cleaning."
+            )
 
-        success_rate = summary.get("mapping_percentage", 0)
-        st.progress(
-            int(success_rate) / 100, text=f"Overall Success Rate: {success_rate:.1f}%"
-        )
-
-    # --- 4. Download Options ---
+    # --- 5. Download Options ---
     st.subheader("💾 Download Options")
 
     # Prepare download data
@@ -134,15 +128,6 @@ def review_results():
                 help="Summary of column mappings",
             )
 
-    # --- 5. Data Quality Info ---
-    if st.session_state.get("validation_errors"):
-        st.subheader("⚠️ Data Quality Issues")
-        error_count = len(st.session_state.validation_errors)
-        if error_count > 0:
-            st.warning(
-                f"Found {error_count} data quality issues. Consider reviewing Step 3 for data cleaning."
-            )
-
     # --- 6. API Usage Summary ---
     gemini_calls = st.session_state.get("gemini_calls_count", 0)
     if gemini_calls > 0:
@@ -151,7 +136,7 @@ def review_results():
 
     # --- 7. Navigation Buttons ---
     st.subheader("🚀 Next Steps")
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     with col1:
         if st.button("🔄 Start Over", type="secondary"):
@@ -171,9 +156,4 @@ def review_results():
     with col2:
         if st.button("⬅️ Back to Data Quality", type="secondary"):
             st.session_state.step = 3
-            st.rerun()
-
-    with col3:
-        if st.button("🏠 Back to Schema Mapping", type="secondary"):
-            st.session_state.step = 2
             st.rerun()

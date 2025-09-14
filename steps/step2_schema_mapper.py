@@ -65,14 +65,14 @@ def schema_mapper():
             if (
                 current_selection
                 and current_selection != original_suggestion
-                and current_selection != "-- DO NOT MAP --"
+                and current_selection != "No Mapping Found"
             ):
                 updated_result["mapping_method"] = MatchMethod.MANUAL
                 updated_result["suggested_canonical"] = current_selection
                 updated_result["confidence"] = (
                     1.0  # Manual selections have 100% confidence
                 )
-            elif current_selection == "-- DO NOT MAP --":
+            elif current_selection == "No Mapping Found":
                 updated_result["mapping_method"] = MatchMethod.NO_MATCH
                 updated_result["suggested_canonical"] = None
                 updated_result["confidence"] = 0.0
@@ -101,7 +101,7 @@ def schema_mapper():
 
     schema_loader = get_schema_loader()
     canonical_columns = list(schema_loader.get_canonical_columns().keys())
-    mapping_options = ["-- DO NOT MAP --"] + canonical_columns
+    mapping_options = ["No Mapping Found"] + canonical_columns
 
     user_overrides = {}
 
@@ -182,18 +182,18 @@ def schema_mapper():
                 st.session_state.mapping_results = current_mapping_results
                 st.session_state.mapping_summary = current_summary
 
-                # Only rename columns that have actual mappings (not "-- DO NOT MAP --")
+                # Only rename columns that have actual mappings (not "No Mapping Found")
                 rename_map = {
                     original: new_name
                     for original, new_name in user_overrides.items()
-                    if new_name != "-- DO NOT MAP --"
+                    if new_name != "No Mapping Found"
                 }
 
                 df = st.session_state.uploaded_df.copy()
                 transformed_df = df.rename(columns=rename_map)
 
                 # Keep all columns - no dropping
-                # Columns marked as "-- DO NOT MAP --" will keep their original names
+                # Columns marked as "No Mapping Found" will keep their original names
 
                 st.session_state.transformed_df = transformed_df
                 st.session_state.applied_mappings = rename_map
@@ -229,13 +229,13 @@ def schema_mapper():
                 for i, result in enumerate(st.session_state.mapping_results):
                     original_header = result["original_header"]
                     current_overrides[original_header] = st.session_state.get(
-                        f"select_{i}", "-- DO NOT MAP --"
+                        f"select_{i}", "No Mapping Found"
                     )
 
                 unmapped_cols = [
                     header
                     for header, choice in current_overrides.items()
-                    if choice == "-- DO NOT MAP --"
+                    if choice == "No Mapping Found"
                 ]
                 if unmapped_cols:
                     st.write("**Unmapped Columns (kept with original names):**")
