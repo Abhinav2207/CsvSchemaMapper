@@ -1,6 +1,6 @@
 import streamlit as st
 
-from common_utils.constants import MatchMethod, SummaryKey
+from common_utils.constants import CONSTANTS, MatchMethod, SummaryKey
 from common_utils.learned_mappings import LearnedMappingsManager
 from common_utils.schema_mapper import SchemaMapper
 from modules.schema_loader import get_schema_loader
@@ -236,6 +236,19 @@ def schema_mapper():
         else:
             # Show disabled Apply Mappings button
             st.button("✅ Apply Mappings", type="primary", disabled=True)
+
+    # Show warning about unmapped columns below the Apply Mappings button
+    unmapped_count = sum(
+        1 for choice in user_overrides.values() if choice == "No Mapping Found"
+    )
+
+    if unmapped_count > CONSTANTS.COLUMN_UNMATCH_THRESHOLD:
+        st.warning(
+            f"⚠️ **Warning**: {unmapped_count} columns are currently unmapped "
+            f"(threshold: {CONSTANTS.COLUMN_UNMATCH_THRESHOLD}). "
+            f"Data quality validation will only run on mapped columns. "
+            f"Review the mappings above to improve data quality coverage."
+        )
 
     # --- 4. Show Transformed DataFrame (if mappings applied) ---
     if st.session_state.get("mappings_applied", False):

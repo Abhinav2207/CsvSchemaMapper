@@ -3,8 +3,10 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
-from .step2_schema_mapper import display_mapping_summary
 from common_utils.learned_mappings import LearnedMappingsManager
+
+from .step2_schema_mapper import display_mapping_summary
+from .step3_data_quality_fixer import display_quality_summary
 
 
 def review_results():
@@ -65,13 +67,16 @@ def review_results():
     if st.session_state.get("mapping_summary"):
         display_mapping_summary(st.session_state.mapping_summary)
 
-    # --- 4. Data Quality Info ---
+    # --- 4. Data Quality Summary ---
+    st.markdown("---")
+    display_quality_summary()
+
+    # Legacy data quality info (for backward compatibility)
     if st.session_state.get("validation_errors"):
-        st.subheader("⚠️ Data Quality Issues")
-        error_count = len(st.session_state.validation_errors)
-        if error_count > 0:
-            st.warning(
-                f"Found {error_count} data quality issues. Consider reviewing Step 3 for data cleaning."
+        legacy_error_count = len(st.session_state.validation_errors)
+        if legacy_error_count > 0:
+            st.info(
+                f"Note: {legacy_error_count} legacy validation errors were also found."
             )
 
     # --- 5. Download Options ---
