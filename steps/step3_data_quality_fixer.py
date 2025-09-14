@@ -78,6 +78,27 @@ def data_quality_fixer():
             "AI-powered fixing is not recommended for this volume of missing data. "
             "Please fix the source data before proceeding."
         )
+        
+        # Add return to home button
+        st.markdown("---")
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            if st.button("🏠 Return to Home", type="primary", key="return_home_missing_data"):
+                # Reset session state to start over
+                st.session_state.step = 1
+                st.session_state.uploaded_df = None
+                st.session_state.mapping_results = []
+                st.session_state.transformed_df = None
+                st.session_state.applied_mappings = {}
+                st.session_state.validation_results = None
+                st.session_state.applied_fixes = []
+                st.session_state.initial_errors = []
+                st.session_state.quality_summary = None
+                if "missing_summary" in st.session_state:
+                    del st.session_state.missing_summary
+                if "ai_suggestions" in st.session_state:
+                    del st.session_state.ai_suggestions
+                st.rerun()
         return
     else:
         st.success("Missing data ratio is within the acceptable threshold.")
