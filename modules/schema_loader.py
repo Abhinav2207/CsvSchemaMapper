@@ -21,11 +21,10 @@ class SchemaLoader:
         """
         self.schemas_dir = Path(schemas_dir)
         self.canonical_schema = None
-        # self.synonyms = None
         self._load_schemas()
 
     def _load_schemas(self) -> None:
-        """Load canonical schema and synonyms from JSON files."""
+        """Load canonical schema from JSON files."""
         try:
             # Load canonical schema
             canonical_path = self.schemas_dir / "canonical.json"
