@@ -162,8 +162,8 @@ class SchemaMapper:
         already_mapped_headers: set,
     ) -> Dict[str, Tuple[str, float]]:
         """
-        Use Google Gemini LLM to match remaining headers to canonical columns.
-        Only processes headers that haven't been mapped yet.
+        Use Google Gemini LLM to match headers to canonical columns.
+        Processes provided headers (may include low-confidence matches for re-evaluation).
         """
         if not self.use_gemini:
             return {}
@@ -184,19 +184,15 @@ class SchemaMapper:
         original_headers = list(uploaded_df.columns)
         header_map = dict(zip(normalized_headers, original_headers))
 
-        # Process only unmapped headers
-        unmapped_headers = [
-            header
-            for header in normalized_headers
-            if header not in already_mapped_headers
-        ]
+        # Process the provided headers (could include low-confidence mappings for re-evaluation)
+        headers_to_process = normalized_headers
 
-        if not unmapped_headers:
+        if not headers_to_process:
             return {}
 
         # Query Gemini for batch mapping using GeminiAgent
         suggested_mappings = self.gemini_agent.map_headers_batch(
-            unmapped_headers, available_canonical, uploaded_df, header_map
+            headers_to_process, available_canonical, uploaded_df, header_map
         )
 
         for header, canonical_col in suggested_mappings.items():
@@ -234,23 +230,34 @@ class SchemaMapper:
         # Step 3: Find fuzzy matches for remaining headers (confidence 0.5-0.8)
         fuzzy_matches = self.get_fuzzy_matches(normalized_headers)
 
-        # Step 4: Use Gemini LLM for remaining headers (confidence 0.8)
+        # Step 4: Identify headers that need AI assistance
+        # Include unmapped headers AND headers with confidence below threshold
         already_mapped_headers = (
             set(exact_matches.keys())
             | set(abbreviation_matches.keys())
             | set(fuzzy_matches.keys())
         )
-        gemini_matches = self.get_gemini_matches(
-            normalized_headers, uploaded_df, already_mapped_headers
-        )
 
-        # Define the match sources in priority order
-        match_sources = [
-            (exact_matches, MatchMethod.EXACT),
-            (abbreviation_matches, MatchMethod.ABBREVIATION),
-            (fuzzy_matches, MatchMethod.FUZZY),
-            (gemini_matches, MatchMethod.GEMINI),
-        ]
+        # Find headers with low confidence that should be sent to AI
+        low_confidence_headers = set()
+        all_matches = {**exact_matches, **abbreviation_matches, **fuzzy_matches}
+
+        for header, (canonical, confidence) in all_matches.items():
+            if CONSTANTS.USE_GEMINI and confidence < CONSTANTS.AI_CONFIDENCE_THRESHOLD:
+                low_confidence_headers.add(header)
+                # Remove the low-confidence canonical mapping so AI can reconsider it
+                self.mapped_canonical_columns.discard(canonical)
+
+        # Headers to send to AI: unmapped + low confidence
+        headers_for_ai = []
+        for header in normalized_headers:
+            if header not in already_mapped_headers or header in low_confidence_headers:
+                headers_for_ai.append(header)
+
+        # Use Gemini LLM for selected headers (confidence 0.8)
+        gemini_matches = self.get_gemini_matches(
+            headers_for_ai, uploaded_df, set()  # Don't exclude any from AI processing
+        )
 
         # Process all headers and create results
         for i, header in enumerate(uploaded_headers):
@@ -264,18 +271,36 @@ class SchemaMapper:
                 "sample_values": self._get_sample_values(uploaded_df, header, 3),
             }
 
-            # Check matches in order
-            for match_dict, method in match_sources:
-                if normalized_header in match_dict:
-                    canonical_column, confidence = match_dict[normalized_header]
-                    result.update(
-                        {
-                            "suggested_canonical": canonical_column,
-                            "confidence": confidence,
-                            "mapping_method": method,
-                        }
-                    )
-                    break  # stop at the first match
+            # Check if AI has a suggestion for this header (highest priority)
+            if normalized_header in gemini_matches:
+                canonical_column, confidence = gemini_matches[normalized_header]
+                result.update(
+                    {
+                        "suggested_canonical": canonical_column,
+                        "confidence": confidence,
+                        "mapping_method": MatchMethod.GEMINI,
+                    }
+                )
+            else:
+                # Check other matches in order (only if no AI match)
+                match_sources = [
+                    (exact_matches, MatchMethod.EXACT),
+                    (abbreviation_matches, MatchMethod.ABBREVIATION),
+                    (fuzzy_matches, MatchMethod.FUZZY),
+                ]
+
+                for match_dict, method in match_sources:
+                    if normalized_header in match_dict:
+                        canonical_column, confidence = match_dict[normalized_header]
+                        # Use the best available match (AI threshold only determines if we ALSO try AI)
+                        result.update(
+                            {
+                                "suggested_canonical": canonical_column,
+                                "confidence": confidence,
+                                "mapping_method": method,
+                            }
+                        )
+                        break
 
             mapping_results.append(result)
 
